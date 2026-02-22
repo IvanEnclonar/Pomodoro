@@ -20,7 +20,7 @@ A minimal, native macOS Pomodoro Timer that lives in your menu bar. Built with S
 No Xcode project needed — just a shell script:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Pomodoro.git
+git clone https://github.com/IvanEnclonar/Pomodoro.git
 cd Pomodoro
 bash build.sh
 open Pomodoro.app
