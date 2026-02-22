@@ -89,12 +89,34 @@ class TimerManager: ObservableObject {
     init() {
         // Initialize timeRemaining with default 0, will be correctly set below
         self.timeRemaining = 0
+
+        // Validate settings to ensure safe values
+        validateSettings()
+
         self.timeRemaining = totalDuration(for: .focus)
         
         loadWeeklyHistory()
         checkAndUpdateDailyReset()
     }
     
+    private func validateSettings() {
+        // Clamp focus duration (1-240 mins)
+        if focusDurationMinutes < 1 { focusDurationMinutes = 25 }
+        if focusDurationMinutes > 240 { focusDurationMinutes = 240 }
+
+        // Clamp short break (1-60 mins)
+        if shortBreakDurationMinutes < 1 { shortBreakDurationMinutes = 5 }
+        if shortBreakDurationMinutes > 60 { shortBreakDurationMinutes = 60 }
+
+        // Clamp long break (1-120 mins)
+        if longBreakDurationMinutes < 1 { longBreakDurationMinutes = 15 }
+        if longBreakDurationMinutes > 120 { longBreakDurationMinutes = 120 }
+
+        // Clamp streak minimum
+        if streakMinMinutes < 1 { streakMinMinutes = 25 }
+        if streakMinMinutes > 120 { streakMinMinutes = 120 }
+    }
+
     // Update the display time immediately if settings change while stopped
     func updateTimeForCurrentSettings() {
         if timerState == .stopped {

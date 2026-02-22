@@ -10,5 +10,9 @@ let package = Package(
         .executableTarget(
             name: "Pomodoro"
         ),
+        .testTarget(
+            name: "PomodoroTests",
+            dependencies: ["Pomodoro"]
+        ),
     ]
 )
