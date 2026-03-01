@@ -1,0 +1,4 @@
+## 2024-03-01 - [Vulnerability of Trusting UserDefaults]
+**Vulnerability:** Trusting `@AppStorage` (UserDefaults) values for critical logic and resource loading without validation.
+**Learning:** External processes or users can tamper with `UserDefaults` values. Using unvalidated `UserDefaults` values for duration calculations can lead to integer overflow or logic errors, and using unvalidated values for `NSSound` can lead to resource misuse.
+**Prevention:** Always validate and clamp values retrieved from `@AppStorage` (or `UserDefaults` generally) before using them in arithmetic operations, duration calculations, or API calls (such as loading sounds).
