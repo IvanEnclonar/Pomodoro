@@ -1,0 +1,4 @@
+## 2024-05-24 - @AppStorage Input Validation Missing
+**Vulnerability:** Untrusted external input from UserDefaults (via `@AppStorage`) was used directly in arithmetic operations (duration logic, streak calculations) and to initialize external resources (`NSSound`), making the application susceptible to logic bypass, integer overflows, or resource misallocation via external tampering.
+**Learning:** Even though SwiftUI simplifies state binding with `@AppStorage`, these values inherently act as an external configuration source that a user (or malicious script) can modify freely (e.g. `defaults write`). They must be treated with the same validation rules as direct user input or API responses.
+**Prevention:** Always sanitize or clamp `@AppStorage` values before passing them into critical logic loops, calculations (especially those involving timers/intervals), or system-level APIs like `NSSound(named:)`.
