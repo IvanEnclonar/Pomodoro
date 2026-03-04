@@ -1,0 +1,5 @@
+## 2024-05-28 - Unsanitized @AppStorage Inputs Leading to Integer Overflow
+
+**Vulnerability:** `@AppStorage` reads values from `UserDefaults`, which can be modified externally. The previous implementation multiplied the `UserDefaults` durations directly by 60 for the time calculations. If a user sets excessively large or negative values (e.g. using `defaults write`), this could result in an integer overflow, causing crashes or broken timer functionality.
+**Learning:** In native macOS applications using SwiftUI, values bound via `@AppStorage` (which wraps `UserDefaults`) cannot be inherently trusted. Since `UserDefaults` can be easily modified without app authorization, directly consuming these values in arithmetic operations (like durations or timer thresholds) opens the application to logic bugs or crashes due to unexpected data ranges.
+**Prevention:** Always sanitize or clamp inputs derived from `@AppStorage` before using them in calculations, state transitions, or resource allocation. Ensure the values fall within logically sound and safe limits (e.g. 1-1440 minutes for an entire day) to guarantee predictable behavior and protect against tampering.
