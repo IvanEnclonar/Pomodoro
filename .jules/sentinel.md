@@ -1,0 +1,4 @@
+## 2024-11-06 - [Swift UserDefaults Integer Overflow Trap (Local DoS)]
+**Vulnerability:** Unvalidated inputs from `@AppStorage` (UserDefaults) were multiplied in critical duration logic (e.g., `streakMinMinutes * 60`). If manipulated, excessively large numbers would trigger a Swift arithmetic overflow trap, resulting in a predictable application crash (Local DoS).
+**Learning:** In Swift, `@AppStorage` reads directly from UserDefaults, which constitutes a local security boundary. Unbounded integer reading from local storage poses a high risk since Swift explicitly traps (crashes) on integer overflow by default.
+**Prevention:** Treat any `@AppStorage` variable used in arithmetic or critical resource allocation as untrusted input. Always clamp or validate the input range (e.g., `min(max(input, 1), 1440)`) directly before arithmetic execution or usage in system APIs like `NSSound`.
