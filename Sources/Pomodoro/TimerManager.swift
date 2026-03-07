@@ -45,7 +45,9 @@ class TimerManager: ObservableObject {
     var currentStreak: Int {
         let calendar = Calendar.current
         let fmt = dateFormatter()
-        let threshold = streakMinMinutes * 60
+        // Clamp streakMinMinutes between 1 and 1440 to prevent integer overflow
+        let clampedStreakMin = max(1, min(1440, streakMinMinutes))
+        let threshold = clampedStreakMin * 60
         var streak = 0
         let today = Date()
         
@@ -148,7 +150,8 @@ class TimerManager: ObservableObject {
                 sessionsCompletedToday += 1
             }
             // Play ding sound
-            NSSound(named: NSSound.Name(completionSound))?.play()
+            let safeSoundName = Self.availableSounds.contains(completionSound) ? completionSound : "Ping"
+            NSSound(named: NSSound.Name(safeSoundName))?.play()
             // Show the window
             WindowDelegate.shared.showWindow()
             nextSession()
@@ -180,9 +183,12 @@ class TimerManager: ObservableObject {
     
     private func totalDuration(for state: SessionState) -> Int {
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus:
+            return max(1, min(1440, focusDurationMinutes)) * 60
+        case .shortBreak:
+            return max(1, min(240, shortBreakDurationMinutes)) * 60
+        case .longBreak:
+            return max(1, min(240, longBreakDurationMinutes)) * 60
         }
     }
     
