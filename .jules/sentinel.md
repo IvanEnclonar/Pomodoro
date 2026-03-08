@@ -1,0 +1,4 @@
+## 2026-03-08 - Integer Overflow Vulnerability in UserDefaults Inputs
+**Vulnerability:** Untrusted user input from `@AppStorage` (UserDefaults) in `TimerManager.swift` for properties like `focusDurationMinutes` and `streakMinMinutes` was being directly used in arithmetic operations (multiplied by 60) without bounds checking. A malicious actor could manipulate the UserDefaults plist to insert extremely large values, causing a local Denial of Service (DoS) when Swift safely traps the resulting integer overflow and crashes the application.
+**Learning:** Swift traps integer overflows by default. Values read from `@AppStorage` should be treated as untrusted external inputs. Any integer read from UserDefaults must be validated or clamped before being used in potentially unsafe arithmetic or logic operations.
+**Prevention:** Always clamp or validate `@AppStorage` integers to safe expected ranges (e.g., `max(1, min(val, 1440))`) before utilizing them in calculations.
