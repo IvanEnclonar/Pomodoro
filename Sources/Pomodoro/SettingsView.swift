@@ -117,7 +117,10 @@ struct SettingsView: View {
                     
                     // Preview button
                     Button(action: {
-                        NSSound(named: NSSound.Name(timerManager.completionSound))?.play()
+                        // Security: Validate sound against allowlist to prevent resource misuse
+                        let soundName = timerManager.completionSound
+                        let safeSound = TimerManager.availableSounds.contains(soundName) ? soundName : "Ping"
+                        NSSound(named: NSSound.Name(safeSound))?.play()
                     }) {
                         Image(systemName: "speaker.wave.2.fill")
                             .font(.system(size: 14))
