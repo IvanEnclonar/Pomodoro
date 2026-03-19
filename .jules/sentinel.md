@@ -1,0 +1,4 @@
+## 2024-05-24 - Missing App Sandbox and Hardened Runtime in Standalone Builds
+**Vulnerability:** The standalone build script (`build.sh`) created a macOS app bundle without applying ad-hoc codesigning with the hardened runtime (`--options runtime`) or enabling the macOS App Sandbox (`com.apple.security.app-sandbox`). This allowed the app to run with unrestricted access to user data and system resources.
+**Learning:** When bypassing Xcode for native macOS app builds, security features like the App Sandbox are not enabled by default. They must be explicitly configured via an entitlements file and applied during the codesigning phase. This is a critical architectural gap in standalone build pipelines.
+**Prevention:** Always include a robust codesigning step in custom build scripts that generates and applies an entitlements file enforcing the App Sandbox and Hardened Runtime, especially for apps that do not require elevated privileges.
