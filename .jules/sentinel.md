@@ -1,0 +1,4 @@
+## 2026-03-21 - Enforce App Sandbox and Hardened Runtime
+**Vulnerability:** The custom build script (`build.sh`) was not applying ad-hoc codesigning with the App Sandbox or Hardened Runtime enabled, leaving the app potentially vulnerable to local exploitation if distributed as-is or compiled directly on a user's machine without Xcode.
+**Learning:** Manual build scripts for macOS apps bypass the default security configurations that Xcode automatically applies. Without explicitly requesting `--options runtime` and providing an entitlements file with `com.apple.security.app-sandbox`, the resulting binary runs with broader system privileges than necessary.
+**Prevention:** Always ensure custom build pipelines for macOS executables explicitly include `codesign` steps that enforce the App Sandbox and Hardened Runtime to adhere to the principle of least privilege.
