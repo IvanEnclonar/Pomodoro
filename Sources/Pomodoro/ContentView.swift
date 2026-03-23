@@ -50,7 +50,7 @@ struct ContentView: View {
             // Controls
             controlsView
         }
-        .padding(40)
+        .padding(30)
         .animation(.easeInOut(duration: 0.4), value: timerManager.sessionState)
     }
 
@@ -71,8 +71,11 @@ struct ContentView: View {
                     }
                     .buttonStyle(.glassProminent)
                     .tint(sessionAccentColor)
-                    .brightness(hoveringPlay ? 0.1 : 0)
-                    .onHover { hoveringPlay = $0 }
+                    .opacity(hoveringPlay ? 0.75 : 1.0)
+                    .onHover { hovering in
+                        hoveringPlay = hovering
+                        hovering ? NSCursor.pointingHand.push() : NSCursor.pop()
+                    }
                     .animation(.spring(duration: 0.2), value: hoveringPlay)
 
                     Button(action: { timerManager.skip() }) {
@@ -81,8 +84,11 @@ struct ContentView: View {
                             .frame(width: 36, height: 36)
                     }
                     .buttonStyle(.glass)
-                    .brightness(hoveringSkip ? 0.1 : 0)
-                    .onHover { hoveringSkip = $0 }
+                    .opacity(hoveringSkip ? 0.75 : 1.0)
+                    .onHover { hovering in
+                        hoveringSkip = hovering
+                        hovering ? NSCursor.pointingHand.push() : NSCursor.pop()
+                    }
                     .animation(.spring(duration: 0.2), value: hoveringSkip)
                 }
             }
@@ -96,9 +102,11 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .tint(sessionAccentColor)
-                .scaleEffect(hoveringPlay ? 1.08 : 1.0)
-                .brightness(hoveringPlay ? 0.08 : 0)
-                .onHover { hoveringPlay = $0 }
+                .opacity(hoveringPlay ? 0.75 : 1.0)
+                .onHover { hovering in
+                    hoveringPlay = hovering
+                    hovering ? NSCursor.pointingHand.push() : NSCursor.pop()
+                }
                 .animation(.spring(duration: 0.2), value: hoveringPlay)
 
                 Button(action: { timerManager.skip() }) {
@@ -108,9 +116,11 @@ struct ContentView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.regular)
-                .scaleEffect(hoveringSkip ? 1.08 : 1.0)
-                .brightness(hoveringSkip ? 0.08 : 0)
-                .onHover { hoveringSkip = $0 }
+                .opacity(hoveringSkip ? 0.75 : 1.0)
+                .onHover { hovering in
+                    hoveringSkip = hovering
+                    hovering ? NSCursor.pointingHand.push() : NSCursor.pop()
+                }
                 .animation(.spring(duration: 0.2), value: hoveringSkip)
             }
         }
