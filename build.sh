@@ -5,7 +5,7 @@ BUNDLE_ID="com.example.pomodoro"
 EXECUTABLE_NAME="Pomodoro"
 
 echo "Building App with swiftc..."
-swiftc Sources/Pomodoro/*.swift -o ${EXECUTABLE_NAME} -target arm64-apple-macosx13.0
+swiftc Sources/Pomodoro/*.swift -o ${EXECUTABLE_NAME} -target arm64-apple-macosx15.0
 
 echo "Creating App Bundle Structure..."
 APP_DIR="${APP_NAME}.app"
@@ -44,7 +44,7 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
+    <string>15.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSUIElement</key>

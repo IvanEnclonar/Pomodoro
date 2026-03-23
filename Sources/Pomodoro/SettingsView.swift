@@ -3,145 +3,72 @@ import AppKit
 
 struct SettingsView: View {
     @ObservedObject var timerManager: TimerManager
-    
+
     var body: some View {
-        VStack(spacing: 24) {
-            
-            Text("Timer Preferences")
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .padding(.bottom, 8)
-            
-            // Config Sliders / Steppers
-            VStack(spacing: 20) {
-                
-                // Focus Duration
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Focus Session")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                        Text("\(timerManager.focusDurationMinutes) minutes")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Stepper("", value: $timerManager.focusDurationMinutes, in: 5...120, step: 5)
-                        .labelsHidden()
+        Form {
+            Section("Durations") {
+                Stepper(value: $timerManager.focusDurationMinutes, in: 5...120, step: 5) {
+                    durationLabel("Focus Session", value: timerManager.focusDurationMinutes)
                 }
-                .onChange(of: timerManager.focusDurationMinutes) { _ in
+                .onChange(of: timerManager.focusDurationMinutes) { _, _ in
                     timerManager.updateTimeForCurrentSettings()
                 }
-                
-                Divider()
-                
-                // Short Break Duration
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Short Break")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                        Text("\(timerManager.shortBreakDurationMinutes) minutes")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Stepper("", value: $timerManager.shortBreakDurationMinutes, in: 1...30, step: 1)
-                        .labelsHidden()
+
+                Stepper(value: $timerManager.shortBreakDurationMinutes, in: 1...30, step: 1) {
+                    durationLabel("Short Break", value: timerManager.shortBreakDurationMinutes)
                 }
-                .onChange(of: timerManager.shortBreakDurationMinutes) { _ in
+                .onChange(of: timerManager.shortBreakDurationMinutes) { _, _ in
                     timerManager.updateTimeForCurrentSettings()
                 }
-                
-                Divider()
-                
-                // Long Break Duration
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Long Break")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                        Text("\(timerManager.longBreakDurationMinutes) minutes")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Stepper("", value: $timerManager.longBreakDurationMinutes, in: 5...60, step: 5)
-                        .labelsHidden()
+
+                Stepper(value: $timerManager.longBreakDurationMinutes, in: 5...60, step: 5) {
+                    durationLabel("Long Break", value: timerManager.longBreakDurationMinutes)
                 }
-                .onChange(of: timerManager.longBreakDurationMinutes) { _ in
+                .onChange(of: timerManager.longBreakDurationMinutes) { _, _ in
                     timerManager.updateTimeForCurrentSettings()
                 }
             }
-            .padding(16)
-            .background(Color.primary.opacity(0.05))
-            .cornerRadius(12)
-            
-            // Auto-start Breaks Toggle
-            VStack(spacing: 16) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Auto-start Breaks")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                        Text("Automatically start break sessions")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Toggle("", isOn: $timerManager.autoStartBreaks)
-                        .labelsHidden()
-                }
-                
-                Divider()
-                
-                // Streak Minimum
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+
+            Section("Behavior") {
+                Toggle("Auto-start Breaks", isOn: $timerManager.autoStartBreaks)
+
+                Stepper(value: $timerManager.streakMinMinutes, in: 1...120, step: 5) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("Streak Minimum")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
                         Text("\(timerManager.streakMinMinutes) min/day to count")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundColor(.secondary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    Spacer()
-                    Stepper("", value: $timerManager.streakMinMinutes, in: 1...120, step: 5)
-                        .labelsHidden()
                 }
-                
-                Divider()
-                
-                // Completion Sound
+
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Completion Sound")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                    }
-                    
-                    Spacer()
-                    
-                    // Preview button
-                    Button(action: {
-                        NSSound(named: NSSound.Name(timerManager.completionSound))?.play()
-                    }) {
-                        Image(systemName: "speaker.wave.2.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("Preview sound")
-                    
-                    Picker("", selection: $timerManager.completionSound) {
+                    Picker("Completion Sound", selection: $timerManager.completionSound) {
                         ForEach(TimerManager.availableSounds, id: \.self) { sound in
                             Text(sound).tag(sound)
                         }
                     }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                    .frame(width: 120)
+
+                    Button {
+                        NSSound(named: NSSound.Name(timerManager.completionSound))?.play()
+                    } label: {
+                        Image(systemName: "speaker.wave.2.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Preview sound")
                 }
             }
-            .padding(16)
-            .background(Color.primary.opacity(0.05))
-            .cornerRadius(12)
-            
         }
-        .padding(30)
-        .frame(width: 340)
+        .formStyle(.grouped)
+        .fontDesign(.rounded)
+        .frame(minWidth: 380)
+    }
+
+    private func durationLabel(_ title: String, value: Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+            Text("\(value) minutes")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }

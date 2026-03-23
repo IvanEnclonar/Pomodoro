@@ -150,7 +150,7 @@ class TimerManager: ObservableObject {
             // Play ding sound
             NSSound(named: NSSound.Name(completionSound))?.play()
             // Show the window
-            WindowDelegate.shared.showWindow()
+            Task { @MainActor in WindowDelegate.shared.showWindow() }
             nextSession()
         }
     }

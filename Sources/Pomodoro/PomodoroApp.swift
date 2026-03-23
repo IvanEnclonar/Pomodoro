@@ -1,6 +1,7 @@
 import SwiftUI
 
 // Intercepts window close to hide instead of destroy
+@MainActor
 class WindowDelegate: NSObject, NSWindowDelegate {
     static let shared = WindowDelegate()
     weak var mainWindow: NSWindow?
@@ -24,7 +25,7 @@ struct PomodoroApp: App {
     @StateObject private var timerManager = TimerManager()
     
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("Pomodoro") {
             ContentView(timerManager: timerManager)
                 .onAppear {
                     // Capture the window and set our delegate
@@ -36,7 +37,7 @@ struct PomodoroApp: App {
                     }
                 }
         }
-        .windowStyle(HiddenTitleBarWindowStyle())
+        .windowToolbarStyle(.unified)
         .windowResizability(.contentSize)
         
         #if os(macOS)

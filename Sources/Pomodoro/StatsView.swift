@@ -17,249 +17,242 @@ struct HeatmapDay: Identifiable {
 
 struct StatsView: View {
     @ObservedObject var timerManager: TimerManager
-    var onDismiss: () -> Void
-    
+
     private let columns = Array(repeating: GridItem(.fixed(28), spacing: 4), count: 7)
-    
+    @State private var hoveredDay: DailyFocusData? = nil
+    @State private var tooltipPosition: CGPoint = .zero
+
     var body: some View {
-        VStack(spacing: 30) {
-            
-            // Header with Back Button
-            HStack {
-                Button(action: onDismiss) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.primary)
+        ScrollView {
+            if #available(macOS 26, *) {
+                GlassEffectContainer(spacing: 20) {
+                    cards
                 }
-                .buttonStyle(PlainButtonStyle())
-                
-                Spacer()
-                
-                Text("Dashboard")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
+            } else {
+                cards
             }
-            
-            // Top Stats Row: Focus Time, Sessions, Streak
-            HStack(spacing: 25) {
-                VStack(spacing: 2) {
-                    Text(formattedFocusTime)
-                        .font(.system(size: 50, weight: .thin, design: .rounded))
-                        .foregroundColor(.primary)
-                    
-                    Text("Today's Focus")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
-                
-                VStack(spacing: 2) {
-                    Text("\(timerManager.sessionsCompletedToday)")
-                        .font(.system(size: 50, weight: .thin, design: .rounded))
-                    Text("Sessions")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
-                
-                VStack(spacing: 2) {
-                    HStack(spacing: 2) {
-                        Text("🔥")
-                            .font(.system(size: 50))
-                        Text("\(timerManager.currentStreak)")
-                            .font(.system(size: 50, weight: .thin, design: .rounded))
-                    }
-                    Text("Day Streak")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
+        }
+        .scrollIndicators(.never)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var cards: some View {
+        VStack(spacing: 16) {
+            topStatsRow
+            weeklyChartSection
+            heatmapSection
+        }
+        .padding(20)
+    }
+
+    // MARK: - Top Stats Row
+
+    private var topStatsRow: some View {
+        HStack(spacing: 0) {
+            statColumn(value: formattedFocusTime, label: "Today's Focus")
+            Divider().frame(height: 50)
+            statColumn(value: "\(timerManager.sessionsCompletedToday)", label: "Sessions")
+            Divider().frame(height: 50)
+            statColumn(value: "🔥 \(timerManager.currentStreak)", label: "Day Streak")
+        }
+        .padding(16)
+        .liquidGlassTinted(.accentColor)
+    }
+
+    private func statColumn(value: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 36, weight: .thin, design: .rounded))
+                .foregroundStyle(.primary)
+            Text(label)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Weekly Chart
+
+    private var weeklyChartSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Last 7 Days")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Chart(last7DaysData) { dataPoint in
+                BarMark(
+                    x: .value("Day", dataPoint.dayName),
+                    y: .value("Minutes", dataPoint.minutes)
+                )
+                .foregroundStyle(
+                    hoveredDay?.id == dataPoint.id
+                        ? Color.accentColor.opacity(1.0)
+                        : Color.accentColor.opacity(0.7)
+                )
+                .cornerRadius(5)
             }
-            
-            // Weekly Bar Chart
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Last 7 Days (Minutes)")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(.secondary)
-                
-                Chart(last7DaysData) { dataPoint in
-                    BarMark(
-                        x: .value("Day", dataPoint.dayName),
-                        y: .value("Minutes", dataPoint.minutes)
-                    )
-                    .foregroundStyle(Color.primary.opacity(0.6))
-                    .cornerRadius(4)
-                }
-                .chartXAxis {
-                    AxisMarks(stroke: StrokeStyle(lineWidth: 0))
-                }
-                .chartYAxis {
-                    AxisMarks(stroke: StrokeStyle(lineWidth: 0))
-                }
-                .frame(height: 100)
+            .chartXAxis {
+                AxisMarks(stroke: StrokeStyle(lineWidth: 0))
             }
-            
-            // Heatmap Section
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Last 30 Days")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    // Legend
-                    HStack(spacing: 2) {
-                        Text("Less")
-                            .font(.system(size: 8, design: .rounded))
-                            .foregroundColor(.secondary)
-                        ForEach(0..<4) { level in
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(heatmapColor(for: Double(level)))
-                                .frame(width: 10, height: 10)
+            .chartYAxis {
+                AxisMarks(stroke: StrokeStyle(lineWidth: 0))
+            }
+            .frame(height: 110)
+            .chartOverlay { proxy in
+                GeometryReader { geo in
+                    let data = last7DaysData
+                    Color.clear
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let loc):
+                                tooltipPosition = loc
+                                if let anchor = proxy.plotFrame {
+                                    let plotFrame = geo[anchor]
+                                    let plotX = loc.x - plotFrame.minX
+                                    let index = Int(plotX / plotFrame.width * CGFloat(data.count))
+                                    let clamped = min(max(index, 0), data.count - 1)
+                                    hoveredDay = plotFrame.contains(loc) ? data[clamped] : nil
+                                }
+                            case .ended:
+                                hoveredDay = nil
+                            }
                         }
-                        Text("More")
-                            .font(.system(size: 8, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                // Day-of-week headers — use same grid layout so they align perfectly
-                LazyVGrid(columns: columns, spacing: 4) {
-                    ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
-                        Text(day)
-                            .font(.system(size: 8, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .frame(width: 28, height: 12)
-                    }
-                }
-                
-                // Heatmap Grid
-                LazyVGrid(columns: columns, spacing: 4) {
-                    // Add empty cells for alignment to start of week
-                    ForEach(0..<leadingEmptyCells, id: \.self) { _ in
-                        Color.clear
-                            .frame(width: 28, height: 28)
-                    }
-                    
-                    ForEach(heatmapData) { day in
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(heatmapColor(for: day.hours))
-                            .frame(width: 28, height: 28)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(day.isToday ? Color.primary.opacity(0.5) : Color.clear, lineWidth: 1.5)
-                            )
-                            .help(tooltipText(for: day))
-                    }
                 }
             }
-            
-            Spacer(minLength: 0)
+            .overlay(alignment: .topLeading) {
+                if let day = hoveredDay {
+                    Text(day.minutes > 0 ? "\(Int(day.minutes))m" : "No data")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                        .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+                        .offset(x: tooltipPosition.x + 10, y: tooltipPosition.y - 28)
+                        .allowsHitTesting(false)
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                        .animation(.easeOut(duration: 0.1), value: hoveredDay?.id)
+                }
+            }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 24)
-        .padding(.bottom, 16)
-        .frame(width: 420, height: 560)
-        .background(
-            VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-        )
+        .glassCard()
     }
-    
-    // MARK: - Weekly Chart Data
-    
+
+    // MARK: - Heatmap
+
+    private var heatmapSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Last 30 Days")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                HStack(spacing: 3) {
+                    Text("Less")
+                        .font(.system(size: 8, design: .rounded))
+                        .foregroundStyle(.secondary)
+                    ForEach(0..<4) { level in
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(heatmapColor(for: Double(level)))
+                            .frame(width: 10, height: 10)
+                    }
+                    Text("More")
+                        .font(.system(size: 8, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Day-of-week headers
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
+                    Text(day)
+                        .font(.system(size: 8, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 12)
+                }
+            }
+
+            // Heatmap Grid
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(0..<leadingEmptyCells, id: \.self) { _ in
+                    Color.clear.frame(width: 28, height: 28)
+                }
+
+                ForEach(heatmapData) { day in
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(heatmapColor(for: day.hours))
+                        .frame(width: 28, height: 28)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(day.isToday ? Color.primary.opacity(0.5) : Color.clear, lineWidth: 1.5)
+                        )
+                        .help(tooltipText(for: day))
+                }
+            }
+        }
+        .glassCard()
+    }
+
+    // MARK: - Data Helpers
+
     private var last7DaysData: [DailyFocusData] {
-        var data: [DailyFocusData] = []
         let calendar = Calendar.current
-        
-        let formatterDate = DateFormatter()
-        formatterDate.dateFormat = "yyyy-MM-dd"
-        
-        let formatterDayName = DateFormatter()
-        formatterDayName.dateFormat = "EEE"
-        
+        let fmtDate = DateFormatter()
+        fmtDate.dateFormat = "yyyy-MM-dd"
+        let fmtDay = DateFormatter()
+        fmtDay.dateFormat = "EEE"
         let today = Date()
-        
-        for i in (0..<7).reversed() {
-            if let date = calendar.date(byAdding: .day, value: -i, to: today) {
-                let dateString = formatterDate.string(from: date)
-                let dayName = formatterDayName.string(from: date)
-                
-                let seconds = timerManager.weeklyHistory[dateString] ?? 0
-                let minutes = Double(seconds) / 60.0
-                let cleanMinutes = round(minutes * 10) / 10
-                
-                data.append(DailyFocusData(dayName: dayName, minutes: cleanMinutes))
-            }
+
+        return (0..<7).reversed().compactMap { i -> DailyFocusData? in
+            guard let date = calendar.date(byAdding: .day, value: -i, to: today) else { return nil }
+            let seconds = timerManager.weeklyHistory[fmtDate.string(from: date)] ?? 0
+            let minutes = round(Double(seconds) / 60.0 * 10) / 10
+            return DailyFocusData(dayName: fmtDay.string(from: date), minutes: minutes)
         }
-        return data
     }
-    
-    // MARK: - Heatmap Helpers
-    
+
     private var heatmapData: [HeatmapDay] {
-        var data: [HeatmapDay] = []
         let calendar = Calendar.current
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
         let today = Date()
-        
-        for i in (0..<30).reversed() {
-            if let date = calendar.date(byAdding: .day, value: -i, to: today) {
-                let dateStr = fmt.string(from: date)
-                let seconds = timerManager.weeklyHistory[dateStr] ?? 0
-                let hours = Double(seconds) / 3600.0
-                let isToday = calendar.isDateInToday(date)
-                data.append(HeatmapDay(date: date, dateString: dateStr, hours: hours, isToday: isToday))
-            }
+
+        return (0..<30).reversed().compactMap { i -> HeatmapDay? in
+            guard let date = calendar.date(byAdding: .day, value: -i, to: today) else { return nil }
+            let dateStr = fmt.string(from: date)
+            let hours = Double(timerManager.weeklyHistory[dateStr] ?? 0) / 3600.0
+            return HeatmapDay(date: date, dateString: dateStr, hours: hours, isToday: calendar.isDateInToday(date))
         }
-        return data
     }
-    
+
     private var leadingEmptyCells: Int {
         let calendar = Calendar.current
-        let today = Date()
-        guard let startDate = calendar.date(byAdding: .day, value: -29, to: today) else { return 0 }
-        let weekday = calendar.component(.weekday, from: startDate)
-        return weekday - 1
+        guard let startDate = calendar.date(byAdding: .day, value: -29, to: Date()) else { return 0 }
+        return calendar.component(.weekday, from: startDate) - 1
     }
-    
+
     private func heatmapColor(for hours: Double) -> Color {
-        if hours <= 0 {
-            return Color.primary.opacity(0.06)
-        } else if hours < 0.5 {
-            return Color.green.opacity(0.3)
-        } else if hours < 1.5 {
-            return Color.green.opacity(0.55)
-        } else {
-            return Color.green.opacity(0.85)
-        }
+        if hours <= 0        { return Color.primary.opacity(0.06) }
+        else if hours < 0.5  { return Color.green.opacity(0.3) }
+        else if hours < 1.5  { return Color.green.opacity(0.55) }
+        else                  { return Color.green.opacity(0.85) }
     }
-    
+
     private func tooltipText(for day: HeatmapDay) -> String {
         let fmt = DateFormatter()
         fmt.dateFormat = "MMM d"
-        let dateLabel = fmt.string(from: day.date)
-        if day.hours > 0 {
-            let h = Int(day.hours)
-            let m = Int((day.hours - Double(h)) * 60)
-            if h > 0 {
-                return "\(dateLabel): \(h)h \(m)m"
-            } else {
-                return "\(dateLabel): \(m)m"
-            }
-        }
-        return "\(dateLabel): No focus"
+        let label = fmt.string(from: day.date)
+        guard day.hours > 0 else { return "\(label): No focus" }
+        let h = Int(day.hours)
+        let m = Int((day.hours - Double(h)) * 60)
+        return h > 0 ? "\(label): \(h)h \(m)m" : "\(label): \(m)m"
     }
-    
-    // Formatting helper for Today's string
+
     private var formattedFocusTime: String {
-        let totalSeconds = timerManager.focusTimeToday
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        } else {
-            return "\(minutes)m"
-        }
+        let total = timerManager.focusTimeToday
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        return h > 0 ? "\(h)h \(m)m" : "\(m)m"
     }
 }
