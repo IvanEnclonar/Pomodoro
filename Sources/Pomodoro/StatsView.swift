@@ -56,7 +56,8 @@ struct StatsView: View {
             statColumn(value: "🔥 \(timerManager.currentStreak)", label: "Day Streak")
         }
         .padding(16)
-        .liquidGlassTinted(.accentColor)
+        .background(Color.accentColor.opacity(0.1))
+        .cornerRadius(16)
     }
 
     private func statColumn(value: String, label: String) -> some View {
@@ -134,7 +135,9 @@ struct StatsView: View {
                 }
             }
         }
-        .glassCard()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
     }
 
     // MARK: - Heatmap
@@ -191,7 +194,9 @@ struct StatsView: View {
                 }
             }
         }
-        .glassCard()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
     }
 
     // MARK: - Data Helpers
