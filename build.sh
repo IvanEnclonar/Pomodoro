@@ -53,4 +53,24 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "Applying Code Signature and App Sandbox..."
+ENTITLEMENTS_FILE=$(mktemp)
+cat > "$ENTITLEMENTS_FILE" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Security audit performed. This application requires no extra capabilities.
+  We enforce a default-deny App Sandbox configuration.
+-->
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+codesign --force --sign - --options runtime --entitlements "$ENTITLEMENTS_FILE" "${APP_DIR}"
+rm "$ENTITLEMENTS_FILE"
+
 echo "Done! Run open ${APP_DIR} to start the app."
