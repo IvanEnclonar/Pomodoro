@@ -254,4 +254,27 @@ class TimerManager: ObservableObject {
             saveWeeklyHistory()
         }
     }
+    func previousSession() {
+        stop()
+        
+        switch sessionState {
+        case .focus:
+            // Going back from focus → previous was break
+            if sessionCount > 0 {
+                sessionCount -= 1
+                
+                if sessionCount % 4 == 3 {
+                    sessionState = .longBreak
+                } else {
+                    sessionState = .shortBreak
+                }
+            }
+            
+        case .shortBreak, .longBreak:
+            // Going back from break → focus
+            sessionState = .focus
+        }
+        
+        timeRemaining = totalDuration(for: sessionState)
+    }
 }

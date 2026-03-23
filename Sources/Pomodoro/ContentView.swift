@@ -64,6 +64,14 @@ struct ContentView: View {
         if #available(macOS 26, *) {
             GlassEffectContainer(spacing: 8) {
                 HStack(spacing: 12) {
+                    Button(action: { timerManager.previousSession() }) {
+                        Image(systemName: "backward.end.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .frame(width: 36, height: 36)
+                    }
+                    .buttonStyle(.glass)
+                    .disabled(timerManager.sessionCount == 0 && timerManager.sessionState == .focus)
+                    
                     Button(action: togglePlayPause) {
                         Image(systemName: playPauseIcon)
                             .font(.system(size: 20, weight: .medium))
@@ -77,7 +85,7 @@ struct ContentView: View {
                         hovering ? NSCursor.pointingHand.push() : NSCursor.pop()
                     }
                     .animation(.spring(duration: 0.2), value: hoveringPlay)
-
+            
                     Button(action: { timerManager.skip() }) {
                         Image(systemName: "forward.end.fill")
                             .font(.system(size: 16, weight: .medium))
