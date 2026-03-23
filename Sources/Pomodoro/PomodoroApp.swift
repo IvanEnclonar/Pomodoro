@@ -33,6 +33,7 @@ struct PomodoroApp: App {
                         if let window = NSApp.windows.first(where: { $0.canBecomeMain }) {
                             WindowDelegate.shared.mainWindow = window
                             window.delegate = WindowDelegate.shared
+                            window.tabbingMode = .disallowed
                         }
                     }
                 }

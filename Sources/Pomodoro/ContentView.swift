@@ -15,7 +15,7 @@ struct ContentView: View {
                     Label("Dashboard", systemImage: "chart.bar.fill")
                 }
         }
-        .frame(minWidth: 380, minHeight: 420)
+        .frame(minWidth: 410, minHeight: 420)
     }
 
     // MARK: - Timer Tab
