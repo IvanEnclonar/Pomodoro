@@ -1,0 +1,4 @@
+## 2024-05-24 - Missing App Sandbox and Hardened Runtime
+**Vulnerability:** The macOS application lacks App Sandbox and Hardened Runtime, running with full user privileges. This leaves the system completely vulnerable if the app is compromised (e.g. through a dependency or local exploitation).
+**Learning:** This Pomodoro application uses a shell script `build.sh` for an ad-hoc build without an Xcode project. Because of this non-standard build process, default Xcode security features (like the App Sandbox and Hardened Runtime) were completely bypassed. A custom entitlements file with the `com.apple.security.app-sandbox` key and ad-hoc `codesign` with `--options runtime` was required to reinstate these critical protections.
+**Prevention:** Always ensure that apps compiled manually via scripts include an explicit `codesign` step with an entitlements file enabling the App Sandbox and the `--options runtime` flag.
