@@ -1,0 +1,4 @@
+## 2024-11-06 - Missing macOS App Sandbox Entitlements
+**Vulnerability:** The standalone build script (`build.sh`) created a macOS App Bundle but failed to codesign it with the Hardened Runtime or enable the macOS App Sandbox (`com.apple.security.app-sandbox`). This allowed the application to run with unrestricted access to the user's filesystem and system resources, violating the principle of least privilege.
+**Learning:** When building macOS applications outside of Xcode (e.g., via standalone `swiftc` scripts), security features like the App Sandbox are not enabled by default. They must be explicitly configured via an `entitlements.plist` file and passed to the `codesign` tool.
+**Prevention:** Always ensure that custom build scripts for macOS applications explicitly generate an entitlements file enabling the App Sandbox and apply it using `codesign --options runtime --entitlements`.

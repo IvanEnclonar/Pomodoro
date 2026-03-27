@@ -53,4 +53,22 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "Generating Entitlements..."
+ENTITLEMENTS_FILE="entitlements.plist"
+cat > "${ENTITLEMENTS_FILE}" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+echo "Codesigning App Bundle..."
+# Sign with the hardened runtime and sandbox entitlements
+codesign --force --options runtime --entitlements "${ENTITLEMENTS_FILE}" -s - "${APP_DIR}"
+rm "${ENTITLEMENTS_FILE}"
+
 echo "Done! Run open ${APP_DIR} to start the app."
