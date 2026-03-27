@@ -45,7 +45,9 @@ class TimerManager: ObservableObject {
     var currentStreak: Int {
         let calendar = Calendar.current
         let fmt = dateFormatter()
-        let threshold = streakMinMinutes * 60
+        // Sentinel: Clamp untrusted UserDefaults input to prevent integer overflow DoS
+        let clampedStreakMin = max(1, min(1440, streakMinMinutes))
+        let threshold = clampedStreakMin * 60
         var streak = 0
         let today = Date()
         
@@ -148,7 +150,9 @@ class TimerManager: ObservableObject {
                 sessionsCompletedToday += 1
             }
             // Play ding sound
-            NSSound(named: NSSound.Name(completionSound))?.play()
+            // Sentinel: Validate untrusted UserDefaults string against allowlist
+            let safeSound = TimerManager.availableSounds.contains(completionSound) ? completionSound : "Ping"
+            NSSound(named: NSSound.Name(safeSound))?.play()
             // Show the window
             Task { @MainActor in WindowDelegate.shared.showWindow() }
             nextSession()
@@ -179,10 +183,17 @@ class TimerManager: ObservableObject {
     }
     
     private func totalDuration(for state: SessionState) -> Int {
+        // Sentinel: Clamp untrusted UserDefaults input to prevent integer overflow DoS
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus:
+            let clamped = max(1, min(1440, focusDurationMinutes))
+            return clamped * 60
+        case .shortBreak:
+            let clamped = max(1, min(240, shortBreakDurationMinutes))
+            return clamped * 60
+        case .longBreak:
+            let clamped = max(1, min(240, longBreakDurationMinutes))
+            return clamped * 60
         }
     }
     

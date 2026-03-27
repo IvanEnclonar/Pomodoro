@@ -1,0 +1,4 @@
+## 2024-05-24 - Untrusted UserDefaults causing Integer Overflow
+**Vulnerability:** `@AppStorage` reads values from `UserDefaults`. These values can be modified externally outside the application sandbox. In `TimerManager.swift`, these untrusted values (like `focusDurationMinutes` and `streakMinMinutes`) were multiplied by 60 without bounds checking. Because Swift traps (crashes) on integer overflow by default, excessively large externally-supplied values would crash the application, creating a local Denial of Service (DoS).
+**Learning:** `UserDefaults` data must always be treated as untrusted user input. Using untrusted inputs in math operations without bounds checking in Swift is a reliable crash vector.
+**Prevention:** Always validate or clamp numerical values fetched from `UserDefaults` (especially those exposed via `@AppStorage`) to a safe range before performing arithmetic operations.
