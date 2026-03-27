@@ -53,4 +53,20 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 </plist>
 EOF
 
+
+echo "Signing App Bundle..."
+ENTITLEMENTS=$(mktemp)
+cat > "${ENTITLEMENTS}" <<'ENT_EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+</dict>
+</plist>
+ENT_EOF
+
+codesign --force --deep --sign - --options runtime --entitlements "${ENTITLEMENTS}" "${APP_DIR}"
+rm "${ENTITLEMENTS}"
 echo "Done! Run open ${APP_DIR} to start the app."
