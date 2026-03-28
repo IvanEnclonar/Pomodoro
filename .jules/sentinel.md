@@ -1,0 +1,4 @@
+## 2024-05-24 - Manual App Sandbox Enforcement in Standalone macOS Builds
+**Vulnerability:** Standalone Swift macOS applications built with raw `swiftc` via bash scripts (without Xcode or SPM bundles) run natively without the macOS App Sandbox or hardened runtime, posing a critical security risk by allowing unfettered access to user data if exploited.
+**Learning:** `swiftc` does not automatically apply App Sandbox or Hardened Runtime to its output executables or manually created app bundles. `codesign` must be invoked directly with a specific entitlements file containing `<key>com.apple.security.app-sandbox</key><true/>` and `--options runtime`.
+**Prevention:** Always include an explicit `codesign` step with an entitlements file when using custom `build.sh` scripts for macOS apps to ensure the resulting `.app` bundle is sandboxed and secure.
