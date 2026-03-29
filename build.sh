@@ -53,4 +53,20 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "Codesigning with App Sandbox and Hardened Runtime..."
+ENTITLEMENTS_PLIST=$(mktemp)
+cat > "${ENTITLEMENTS_PLIST}" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+codesign --force --deep --sign - --entitlements "${ENTITLEMENTS_PLIST}" --options runtime "${APP_DIR}"
+rm "${ENTITLEMENTS_PLIST}"
+
 echo "Done! Run open ${APP_DIR} to start the app."
