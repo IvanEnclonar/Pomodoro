@@ -53,4 +53,21 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "Applying Ad-Hoc Codesigning with App Sandbox and Hardened Runtime..."
+ENTITLEMENTS=$(mktemp)
+cat > "${ENTITLEMENTS}" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Security Audit: Default deny App Sandbox enabled. No extra capabilities needed for this Pomodoro timer. -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+codesign --force --deep --options runtime --entitlements "${ENTITLEMENTS}" --sign - "${APP_DIR}"
+rm "${ENTITLEMENTS}"
+
 echo "Done! Run open ${APP_DIR} to start the app."

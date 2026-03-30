@@ -1,0 +1,4 @@
+## 2024-05-24 - Missing App Sandbox in Custom Build Scripts
+**Vulnerability:** The standalone `build.sh` script compiled the macOS application without applying the App Sandbox (`com.apple.security.app-sandbox`) or Hardened Runtime (`--options runtime`).
+**Learning:** When bypassing Xcode for custom build pipelines (like simple `swiftc` scripts), security features that are typically enabled by default in modern Xcode projects are completely omitted. This leaves the resulting app with unrestricted access to the user's system, violating the principle of least privilege.
+**Prevention:** Always ensure that custom macOS build scripts include an explicit `codesign` step with a generated or provided `entitlements.plist` that enables the App Sandbox and Hardened Runtime, even for simple ad-hoc builds.
