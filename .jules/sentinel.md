@@ -1,0 +1,4 @@
+## 2026-03-17 - Missing macOS Sandbox and Hardened Runtime Protections
+**Vulnerability:** The standalone `build.sh` script compiled the Swift application without invoking `codesign` to apply the `com.apple.security.app-sandbox` entitlement or the `--options runtime` flag. This left the app running without sandbox isolation or Hardened Runtime protections, giving it full user privileges and exposing it to code injection attacks.
+**Learning:** Custom build scripts for macOS apps outside of Xcode often omit critical security mechanisms like codesigning, sandboxing, and Hardened Runtime by default, leaving apps vulnerable.
+**Prevention:** Always ensure that custom build scripts for macOS applications include a `codesign` step that applies an entitlements file enforcing the App Sandbox (`com.apple.security.app-sandbox`) and enables the Hardened Runtime (`--options runtime`).
