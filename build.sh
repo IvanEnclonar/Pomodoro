@@ -53,4 +53,24 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "Generating temporary entitlements.plist..."
+TEMP_ENTITLEMENTS=$(mktemp)
+cat > "${TEMP_ENTITLEMENTS}" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <!-- A security audit was performed and no additional capabilities are needed -->
+</dict>
+</plist>
+EOF
+
+echo "Codesigning app bundle with entitlements and hardened runtime..."
+codesign --force --deep --sign - --entitlements "${TEMP_ENTITLEMENTS}" --options runtime "${APP_DIR}"
+
+echo "Cleaning up..."
+rm -f "${TEMP_ENTITLEMENTS}"
+
 echo "Done! Run open ${APP_DIR} to start the app."
