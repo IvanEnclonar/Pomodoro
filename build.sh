@@ -53,4 +53,20 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "Applying codesign and App Sandbox..."
+ENTITLEMENTS=$(mktemp)
+cat > "${ENTITLEMENTS}" <<ENTEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <!-- Security Audit: No additional capabilities are needed for this timer app -->
+</dict>
+</plist>
+ENTEOF
+codesign --force --options runtime --entitlements "${ENTITLEMENTS}" --sign "-" "${APP_DIR}"
+rm "${ENTITLEMENTS}"
+
 echo "Done! Run open ${APP_DIR} to start the app."

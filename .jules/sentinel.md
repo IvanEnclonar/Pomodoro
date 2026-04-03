@@ -1,0 +1,4 @@
+## 2026-04-03 - [HIGH] Unvalidated @AppStorage input causing potential local DoS/unexpected behavior and Missing macOS App Sandbox
+**Vulnerability:** The `completionSound` read from `@AppStorage` was passed directly to `NSSound(named:)` without validation against a whitelist. Additionally, the standalone app bundle was built without App Sandbox entitlements or Hardened Runtime, violating macOS security standards.
+**Learning:** When using `@AppStorage` for macOS settings, underlying `UserDefaults` can be easily manipulated by users or other processes. Input must always be validated. Without Sandbox and Hardened runtime, the app runs with excessive implicit capabilities.
+**Prevention:** Always validate `@AppStorage` strings against an enum or whitelist. Always enforce `com.apple.security.app-sandbox` and use `codesign --options runtime` for macOS app bundles, including an explicit XML comment explaining that no extra capabilities are required after audit.
