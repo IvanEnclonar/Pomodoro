@@ -49,7 +49,7 @@ struct SettingsView: View {
                     }
 
                     Button {
-                        NSSound(named: NSSound.Name(timerManager.completionSound))?.play()
+                        NSSound(named: NSSound.Name(timerManager.validatedCompletionSound))?.play()
                     } label: {
                         Image(systemName: "speaker.wave.2.fill")
                     }
