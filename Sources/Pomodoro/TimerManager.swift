@@ -45,7 +45,9 @@ class TimerManager: ObservableObject {
     var currentStreak: Int {
         let calendar = Calendar.current
         let fmt = dateFormatter()
-        let threshold = streakMinMinutes * 60
+        // Clamp streakMinMinutes between 1 and 1440 minutes (24 hours) to prevent overflow or logic errors
+        let clampedStreakMinMinutes = max(1, min(streakMinMinutes, 1440))
+        let threshold = clampedStreakMinMinutes * 60
         var streak = 0
         let today = Date()
         
@@ -147,8 +149,9 @@ class TimerManager: ObservableObject {
             if sessionState == .focus {
                 sessionsCompletedToday += 1
             }
-            // Play ding sound
-            NSSound(named: NSSound.Name(completionSound))?.play()
+            // Play ding sound, validating the sound name against the allowlist
+            let soundName = TimerManager.availableSounds.contains(completionSound) ? completionSound : "Ping"
+            NSSound(named: NSSound.Name(soundName))?.play()
             // Show the window
             Task { @MainActor in WindowDelegate.shared.showWindow() }
             nextSession()
@@ -180,9 +183,18 @@ class TimerManager: ObservableObject {
     
     private func totalDuration(for state: SessionState) -> Int {
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus:
+            // Clamp focus duration between 1 and 1440 minutes
+            let clampedMinutes = max(1, min(focusDurationMinutes, 1440))
+            return clampedMinutes * 60
+        case .shortBreak:
+            // Clamp break durations between 1 and 240 minutes
+            let clampedMinutes = max(1, min(shortBreakDurationMinutes, 240))
+            return clampedMinutes * 60
+        case .longBreak:
+            // Clamp break durations between 1 and 240 minutes
+            let clampedMinutes = max(1, min(longBreakDurationMinutes, 240))
+            return clampedMinutes * 60
         }
     }
     
