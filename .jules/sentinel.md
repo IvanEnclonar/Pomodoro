@@ -1,0 +1,7 @@
+## 2024-05-24 - UserDefaults Input Validation and App Sandbox
+
+**Vulnerability:** Unvalidated input risks from tampered `@AppStorage` (UserDefaults) values in `TimerManager.swift`, specifically potentially arbitrary sound names passed to `NSSound(named:)` and negative duration values causing logic errors. Additionally, the application lacked App Sandbox and Hardened Runtime enforcement in its build process (`build.sh`).
+
+**Learning:** Data sourced from `UserDefaults` (especially via `@AppStorage`) must be treated as untrusted input because it can be modified externally. Furthermore, local macOS environments lack App Sandbox protections by default unless an explicit entitlements file is provided during ad-hoc codesigning. Even when requiring no capabilities, a default-deny App Sandbox configuration with a comment explaining the zero-capability policy is critical for automated audits.
+
+**Prevention:** Always validate or sanitize `@AppStorage` inputs before use (e.g., check against a whitelist like `TimerManager.availableSounds` or clamp numerical ranges). Ensure standalone macOS build scripts apply ad-hoc codesigning with App Sandbox and Hardened Runtime using a generated `entitlements.plist` file.
