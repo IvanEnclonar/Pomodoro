@@ -45,7 +45,9 @@ class TimerManager: ObservableObject {
     var currentStreak: Int {
         let calendar = Calendar.current
         let fmt = dateFormatter()
-        let threshold = streakMinMinutes * 60
+        // Clamp streakMinMinutes to prevent integer overflow if UserDefaults is tampered with
+        let safeStreakMinMinutes = max(1, min(streakMinMinutes, 1440))
+        let threshold = safeStreakMinMinutes * 60
         var streak = 0
         let today = Date()
         
@@ -180,9 +182,15 @@ class TimerManager: ObservableObject {
     
     private func totalDuration(for state: SessionState) -> Int {
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus:
+            let safeMinutes = max(1, min(focusDurationMinutes, 1440))
+            return safeMinutes * 60
+        case .shortBreak:
+            let safeMinutes = max(1, min(shortBreakDurationMinutes, 240))
+            return safeMinutes * 60
+        case .longBreak:
+            let safeMinutes = max(1, min(longBreakDurationMinutes, 240))
+            return safeMinutes * 60
         }
     }
     
