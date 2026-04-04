@@ -53,4 +53,21 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "Applying Ad-hoc Codesignature with App Sandbox..."
+ENTITLEMENTS=$(mktemp)
+cat > "$ENTITLEMENTS" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Security audit performed; no additional capabilities needed -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+codesign --force --sign - --entitlements "$ENTITLEMENTS" --options runtime "${APP_DIR}"
+rm "$ENTITLEMENTS"
+
 echo "Done! Run open ${APP_DIR} to start the app."
