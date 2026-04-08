@@ -1,0 +1,4 @@
+## 2024-11-20 - Unvalidated UserDefaults Input
+**Vulnerability:** External data persistence layer (UserDefaults/AppStorage) was implicitly trusted and used directly in system framework calls (NSSound initialization) and critical application state logic without validation, leaving the application vulnerable to manipulation via tampering with UserDefaults plist files.
+**Learning:** Even though UserDefaults seems like "internal" application state, it operates across trust boundaries and can be externally modified independently of UI controls. State driven by @AppStorage must always be treated as untrusted external input and validated via whitelists or safe boundaries before use.
+**Prevention:** Implement safe accessor properties that validate against known whitelists (e.g. `availableSounds.contains()`) and wrap bounds checks (e.g. `max(0, ...)`) around raw UserDefaults values prior to injecting them into internal functions.
