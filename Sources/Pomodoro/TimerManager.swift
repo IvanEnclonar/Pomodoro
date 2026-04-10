@@ -31,6 +31,10 @@ class TimerManager: ObservableObject {
     @AppStorage("streakMinMinutes") var streakMinMinutes: Int = 25
     static let availableSounds = ["Ping", "Glass", "Basso", "Blow", "Bottle", "Frog", "Funk", "Hero", "Morse", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
     
+    var safeCompletionSound: String {
+        Self.availableSounds.contains(completionSound) ? completionSound : "Ping"
+    }
+
     // Data Persistence using UserDefaults
     @AppStorage("focusTimeToday") var focusTimeToday: Int = 0
     @AppStorage("sessionsCompletedToday") var sessionsCompletedToday: Int = 0
@@ -148,7 +152,7 @@ class TimerManager: ObservableObject {
                 sessionsCompletedToday += 1
             }
             // Play ding sound
-            NSSound(named: NSSound.Name(completionSound))?.play()
+            NSSound(named: NSSound.Name(safeCompletionSound))?.play()
             // Show the window
             Task { @MainActor in WindowDelegate.shared.showWindow() }
             nextSession()
@@ -180,9 +184,9 @@ class TimerManager: ObservableObject {
     
     private func totalDuration(for state: SessionState) -> Int {
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus: return max(0, focusDurationMinutes * 60)
+        case .shortBreak: return max(0, shortBreakDurationMinutes * 60)
+        case .longBreak: return max(0, longBreakDurationMinutes * 60)
         }
     }
     
