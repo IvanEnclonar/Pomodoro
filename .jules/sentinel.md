@@ -1,0 +1,4 @@
+## 2026-04-11 - Unvalidated UserDefaults Used in System APIs
+**Vulnerability:** The application reads `completionSound` directly from `@AppStorage` (UserDefaults) and passes it directly to `NSSound(named:)`. Since UserDefaults can be modified outside the app by an attacker or a script, an invalid or maliciously crafted string could be injected, leading to unexpected behavior or potential issues when passed to system APIs.
+**Learning:** Values from `@AppStorage` should not be implicitly trusted, even if they are only modified via a constrained UI (like a Picker) within the app. External tampering is always possible.
+**Prevention:** Always validate values read from `@AppStorage` against a whitelist or expected bounds before using them in system framework calls or sensitive application logic. Use computed properties to provide safe, validated access to these defaults.
