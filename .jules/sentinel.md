@@ -1,0 +1,4 @@
+## 2024-05-15 - Unvalidated AppStorage External Input Vulnerability
+**Vulnerability:** Unvalidated input vulnerability caused by reading unsanitized variables like `completionSound` and duration minutes directly from `@AppStorage` (UserDefaults). These inputs could be maliciously altered (since UserDefaults is modifiable externally) to cause crashes (e.g., via integer overflow or unvalidated NSSound lookup).
+**Learning:** Variables mapped to `@AppStorage` represent an external input boundary that cannot be trusted unconditionally, even if the application UI restricts them. They must be validated before being used by the application logic.
+**Prevention:** Always implement safe computed properties that clamp numerical AppStorage inputs to safe boundaries (e.g., `1...1440` minutes) and validate string inputs against known safe whitelists before usage.
