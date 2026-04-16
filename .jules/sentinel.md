@@ -1,0 +1,4 @@
+## 2024-05-01 - [Unvalidated `@AppStorage` Input Vulnerability]
+**Vulnerability:** Core application properties bound to `@AppStorage` (UserDefaults) were implicitly trusted as internal state and used directly in system framework calls (`NSSound` initialization) and array calculations without validation.
+**Learning:** `@AppStorage` values represent untrusted external input because they can be modified out-of-band by external processes or users tampering with `UserDefaults` directly via shell (`defaults write`), circumventing UI-based limits (like `Stepper` bounds).
+**Prevention:** Treat all `UserDefaults` / `@AppStorage` properties as potentially malicious external inputs. Implement private or read-only "safe" computed properties to clamp integers to safe ranges (e.g., 1...1440 minutes to prevent integer overflow crashes) and validate strings against known whitelists before usage in application logic or framework APIs.
