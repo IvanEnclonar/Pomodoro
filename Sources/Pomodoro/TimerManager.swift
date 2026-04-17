@@ -31,6 +31,15 @@ class TimerManager: ObservableObject {
     @AppStorage("streakMinMinutes") var streakMinMinutes: Int = 25
     static let availableSounds = ["Ping", "Glass", "Basso", "Blow", "Bottle", "Frog", "Funk", "Hero", "Morse", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
     
+    // Safe getters for AppStorage values to prevent integer overflow and invalid inputs
+    var safeFocusDurationMinutes: Int { min(max(focusDurationMinutes, 1), 1440) }
+    var safeShortBreakDurationMinutes: Int { min(max(shortBreakDurationMinutes, 1), 1440) }
+    var safeLongBreakDurationMinutes: Int { min(max(longBreakDurationMinutes, 1), 1440) }
+    var safeStreakMinMinutes: Int { min(max(streakMinMinutes, 1), 1440) }
+    var safeCompletionSound: String {
+        Self.availableSounds.contains(completionSound) ? completionSound : "Ping"
+    }
+
     // Data Persistence using UserDefaults
     @AppStorage("focusTimeToday") var focusTimeToday: Int = 0
     @AppStorage("sessionsCompletedToday") var sessionsCompletedToday: Int = 0
@@ -45,7 +54,7 @@ class TimerManager: ObservableObject {
     var currentStreak: Int {
         let calendar = Calendar.current
         let fmt = dateFormatter()
-        let threshold = streakMinMinutes * 60
+        let threshold = safeStreakMinMinutes * 60
         var streak = 0
         let today = Date()
         
@@ -148,7 +157,7 @@ class TimerManager: ObservableObject {
                 sessionsCompletedToday += 1
             }
             // Play ding sound
-            NSSound(named: NSSound.Name(completionSound))?.play()
+            NSSound(named: NSSound.Name(safeCompletionSound))?.play()
             // Show the window
             Task { @MainActor in WindowDelegate.shared.showWindow() }
             nextSession()
@@ -180,9 +189,9 @@ class TimerManager: ObservableObject {
     
     private func totalDuration(for state: SessionState) -> Int {
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus: return safeFocusDurationMinutes * 60
+        case .shortBreak: return safeShortBreakDurationMinutes * 60
+        case .longBreak: return safeLongBreakDurationMinutes * 60
         }
     }
     
