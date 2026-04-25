@@ -45,7 +45,7 @@ class TimerManager: ObservableObject {
     var currentStreak: Int {
         let calendar = Calendar.current
         let fmt = dateFormatter()
-        let threshold = streakMinMinutes * 60
+        let threshold = safeStreakMinMinutes * 60
         var streak = 0
         let today = Date()
         
@@ -148,7 +148,7 @@ class TimerManager: ObservableObject {
                 sessionsCompletedToday += 1
             }
             // Play ding sound
-            NSSound(named: NSSound.Name(completionSound))?.play()
+            NSSound(named: NSSound.Name(safeCompletionSound))?.play()
             // Show the window
             Task { @MainActor in WindowDelegate.shared.showWindow() }
             nextSession()
@@ -178,11 +178,22 @@ class TimerManager: ObservableObject {
         }
     }
     
+    // Safe clamped durations to prevent integer overflow from corrupted UserDefaults
+    var safeFocusDurationMinutes: Int { min(max(focusDurationMinutes, 1), 1440) }
+    var safeShortBreakDurationMinutes: Int { min(max(shortBreakDurationMinutes, 1), 1440) }
+    var safeLongBreakDurationMinutes: Int { min(max(longBreakDurationMinutes, 1), 1440) }
+    var safeStreakMinMinutes: Int { min(max(streakMinMinutes, 1), 1440) }
+
+    // Validate untrusted sound string against whitelist
+    var safeCompletionSound: String {
+        Self.availableSounds.contains(completionSound) ? completionSound : "Ping"
+    }
+
     private func totalDuration(for state: SessionState) -> Int {
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus: return safeFocusDurationMinutes * 60
+        case .shortBreak: return safeShortBreakDurationMinutes * 60
+        case .longBreak: return safeLongBreakDurationMinutes * 60
         }
     }
     
