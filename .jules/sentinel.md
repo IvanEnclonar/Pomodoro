@@ -1,0 +1,4 @@
+## 2024-05-24 - Integer Overflow DoS from Untrusted UserDefaults
+**Vulnerability:** The application used raw `@AppStorage` integer values directly in multiplication calculations (`duration * 60`). In Swift, integer overflow causes a fatal trap, allowing a user or script with local access to modify `UserDefaults` with extremely large numbers, crashing the app on startup or timer interaction and causing a persistent local Denial of Service (DoS).
+**Learning:** Data from `@AppStorage` (UserDefaults) is effectively external input and should never be trusted implicitly. It is a boundary where tampering can lead to runtime crashes if boundaries aren't enforced.
+**Prevention:** Always clamp or validate `@AppStorage` integer and duration values to a safe range (e.g., `min(max(value, 1), 1440)`) before using them in arithmetic operations or logic to prevent integer overflow traps.
