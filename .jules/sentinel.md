@@ -1,0 +1,4 @@
+## 2026-04-29 - Prevent Integer Overflow via Untrusted UserDefaults Input
+**Vulnerability:** The application uses `@AppStorage` values directly in arithmetic calculations (e.g., `focusDurationMinutes * 60`) without validation. `UserDefaults` is a form of external input that can be modified independently of the application's UI, allowing a malicious actor or corrupted data to inject excessively large integers.
+**Learning:** In Swift, integer overflows safely trap (crash) by default. Relying on implicit trust for `@AppStorage` values introduces a local denial-of-service (DoS) risk due to integer overflow crashes.
+**Prevention:** Always treat `@AppStorage` values as untrusted input. Validate and clamp these values to a safe boundary (e.g., 1...1440 minutes) using private computed properties before utilizing them in sensitive APIs or calculations.
