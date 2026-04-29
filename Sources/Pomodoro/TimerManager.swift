@@ -31,6 +31,12 @@ class TimerManager: ObservableObject {
     @AppStorage("streakMinMinutes") var streakMinMinutes: Int = 25
     static let availableSounds = ["Ping", "Glass", "Basso", "Blow", "Bottle", "Frog", "Funk", "Hero", "Morse", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
     
+    // Safe clamped values to prevent integer overflow from untrusted UserDefaults input
+    private var safeFocusDurationMinutes: Int { min(max(focusDurationMinutes, 1), 1440) }
+    private var safeShortBreakDurationMinutes: Int { min(max(shortBreakDurationMinutes, 1), 1440) }
+    private var safeLongBreakDurationMinutes: Int { min(max(longBreakDurationMinutes, 1), 1440) }
+    private var safeStreakMinMinutes: Int { min(max(streakMinMinutes, 1), 1440) }
+
     // Data Persistence using UserDefaults
     @AppStorage("focusTimeToday") var focusTimeToday: Int = 0
     @AppStorage("sessionsCompletedToday") var sessionsCompletedToday: Int = 0
@@ -45,7 +51,7 @@ class TimerManager: ObservableObject {
     var currentStreak: Int {
         let calendar = Calendar.current
         let fmt = dateFormatter()
-        let threshold = streakMinMinutes * 60
+        let threshold = safeStreakMinMinutes * 60
         var streak = 0
         let today = Date()
         
@@ -180,9 +186,9 @@ class TimerManager: ObservableObject {
     
     private func totalDuration(for state: SessionState) -> Int {
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus: return safeFocusDurationMinutes * 60
+        case .shortBreak: return safeShortBreakDurationMinutes * 60
+        case .longBreak: return safeLongBreakDurationMinutes * 60
         }
     }
     
