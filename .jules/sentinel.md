@@ -1,0 +1,4 @@
+## 2024-05-01 - Fix integer overflow crash from unvalidated UserDefaults
+**Vulnerability:** The application was directly using integer values from UserDefaults (`@AppStorage`) in time calculations. Maliciously crafted or corrupted UserDefaults (e.g., negative values or extremely large numbers) would cause an integer overflow when multiplied by 60 for seconds, crashing the application (local Denial of Service).
+**Learning:** Values managed by `@AppStorage` should not be treated as implicitly trusted internal state. They are a form of external input that can be modified independently of the application's UI.
+**Prevention:** Always clamp `@AppStorage` values to a safe range (e.g., `max(1, min(val, 1440))`) before using them in calculations to prevent arithmetic overflow and unexpected application behavior.
