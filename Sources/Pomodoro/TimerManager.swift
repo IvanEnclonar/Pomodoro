@@ -41,11 +41,19 @@ class TimerManager: ObservableObject {
     
     @Published var weeklyHistory: [String: Int] = [:]
     
+    // MARK: - Input Validation
+
+    // Clamp UserDefaults data to safe boundaries (1 min to 1440 mins) to prevent overflow/DoS
+    private var safeFocusDurationMinutes: Int { max(1, min(focusDurationMinutes, 1440)) }
+    private var safeShortBreakDurationMinutes: Int { max(1, min(shortBreakDurationMinutes, 1440)) }
+    private var safeLongBreakDurationMinutes: Int { max(1, min(longBreakDurationMinutes, 1440)) }
+    private var safeStreakMinMinutes: Int { max(1, min(streakMinMinutes, 1440)) }
+
     // Streak: consecutive days meeting the minimum focus threshold
     var currentStreak: Int {
         let calendar = Calendar.current
         let fmt = dateFormatter()
-        let threshold = streakMinMinutes * 60
+        let threshold = safeStreakMinMinutes * 60
         var streak = 0
         let today = Date()
         
@@ -180,9 +188,9 @@ class TimerManager: ObservableObject {
     
     private func totalDuration(for state: SessionState) -> Int {
         switch state {
-        case .focus: return focusDurationMinutes * 60
-        case .shortBreak: return shortBreakDurationMinutes * 60
-        case .longBreak: return longBreakDurationMinutes * 60
+        case .focus: return safeFocusDurationMinutes * 60
+        case .shortBreak: return safeShortBreakDurationMinutes * 60
+        case .longBreak: return safeLongBreakDurationMinutes * 60
         }
     }
     

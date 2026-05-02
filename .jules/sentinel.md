@@ -1,0 +1,4 @@
+## 2026-05-02 - Unvalidated UserDefaults Data Can Cause Integer Overflows
+**Vulnerability:** The `@AppStorage` numeric properties like `focusDurationMinutes` and `streakMinMinutes` were used directly in multiplication (`* 60`) without validation. `UserDefaults` data is untrusted external input and can be manipulated by malicious actors or external tools.
+**Learning:** In Swift, integer overflow causes an immediate runtime crash (trap). Treating `UserDefaults` state as inherently safe internal state creates a local Denial-of-Service vulnerability, particularly since it skips UI validation (which clamps in the Stepper).
+**Prevention:** Never trust data loaded from `UserDefaults` or `@AppStorage`. Always validate or clamp untrusted numeric input to a safe expected range (e.g., 1...1440 minutes for a day) before performing arithmetic or passing it to critical APIs.
