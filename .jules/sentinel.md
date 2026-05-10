@@ -1,0 +1,4 @@
+## 2026-05-10 - Arbitrary Sound Injection via Unvalidated UserDefaults
+**Vulnerability:** The application used unvalidated values from `@AppStorage("completionSound")` directly in `NSSound(named:)`, which allowed for potential path traversal or arbitrary sound injection if the underlying `UserDefaults` plist was maliciously modified.
+**Learning:** Values managed by `@AppStorage` (UserDefaults) should not be treated as implicitly trusted internal state. It is a form of external input that can be modified independently of the application's UI, and must be validated against a known whitelist or safe boundaries before usage in sensitive APIs or framework calls.
+**Prevention:** Introduce a `safeCompletionSound` computed property that strictly validates the `completionSound` against the predefined `availableSounds` allowlist, ensuring only trusted resources can be loaded by `NSSound`.
