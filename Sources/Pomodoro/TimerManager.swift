@@ -14,6 +14,22 @@ enum TimerState {
     case paused
 }
 
+struct TimerStatus: Codable, Sendable {
+    let timerState: String
+    let sessionState: String
+    let timeRemaining: Int
+    let sessionCount: Int
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case timerState = "timer_state"
+        case sessionState = "session_state"
+        case timeRemaining = "time_remaining"
+        case sessionCount = "session_count"
+        case updatedAt = "updated_at"
+    }
+}
+
 class TimerManager: ObservableObject {
     @Published var timeRemaining: Int
     @Published var sessionState: SessionState = .focus
@@ -29,6 +45,11 @@ class TimerManager: ObservableObject {
     @AppStorage("completionSound") var completionSound: String = "Ping"
     @AppStorage("autoStartBreaks") var autoStartBreaks: Bool = false
     @AppStorage("streakMinMinutes") var streakMinMinutes: Int = 25
+
+    // Remote control
+    @AppStorage("supabaseUrl") var supabaseUrl: String = ""
+    @AppStorage("supabaseKey") var supabaseKey: String = ""
+    @AppStorage("remoteControlEnabled") var remoteControlEnabled: Bool = false
     static let availableSounds = ["Ping", "Glass", "Basso", "Blow", "Bottle", "Frog", "Funk", "Hero", "Morse", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
     
     // Data Persistence using UserDefaults
@@ -40,6 +61,15 @@ class TimerManager: ObservableObject {
     @AppStorage("weeklyFocusHistoryData") private var weeklyFocusHistoryData: Data = Data()
     
     @Published var weeklyHistory: [String: Int] = [:]
+
+    // Open session: counts up with no target while the timer is set aside
+    @Published private(set) var isOpenSession = false
+    @Published private(set) var openSessionRunning = false
+    @Published private(set) var openElapsed: Int = 0
+    @Published private(set) var openSessionStart: Date?
+    @Published var openSessionToast: OpenSessionToast?
+    private var openTimer: AnyCancellable?
+    private var setAside: (state: TimerState, session: SessionState, remaining: Int)?
     
     // Streak: consecutive days meeting the minimum focus threshold
     var currentStreak: Int {
@@ -96,6 +126,29 @@ class TimerManager: ObservableObject {
     }
     
     // Update the display time immediately if settings change while stopped
+    func currentStatus() -> TimerStatus {
+        let timerStateStr: String
+        switch timerState {
+        case .running: timerStateStr = "running"
+        case .paused:  timerStateStr = "paused"
+        case .stopped: timerStateStr = "stopped"
+        }
+        let sessionStateStr: String
+        switch sessionState {
+        case .focus:       sessionStateStr = "focus"
+        case .shortBreak:  sessionStateStr = "shortBreak"
+        case .longBreak:   sessionStateStr = "longBreak"
+        }
+        let iso = ISO8601DateFormatter()
+        return TimerStatus(
+            timerState: timerStateStr,
+            sessionState: sessionStateStr,
+            timeRemaining: timeRemaining,
+            sessionCount: sessionCount,
+            updatedAt: iso.string(from: Date())
+        )
+    }
+
     func updateTimeForCurrentSettings() {
         if timerState == .stopped {
             timeRemaining = totalDuration(for: sessionState)
@@ -253,5 +306,101 @@ class TimerManager: ObservableObject {
             tickCounter = 0
             saveWeeklyHistory()
         }
+    }
+}
+
+// MARK: - Open Session
+
+struct OpenSessionToast: Identifiable, Equatable {
+    let id = UUID()
+    let message: String
+    let seconds: Int
+    let logged: Bool
+}
+
+extension TimerManager {
+    /// "45 sec", "12 min", "1h 5m"
+    static func describe(seconds: Int) -> String {
+        if seconds < 60 { return "\(seconds) sec" }
+        let minutes = Int((Double(seconds) / 60).rounded())
+        return minutes < 60 ? "\(minutes) min" : "\(minutes / 60)h \(minutes % 60)m"
+    }
+
+    /// Starts counting up with no target. The timer is paused if it was running and
+    /// put back exactly as it was when the open session is logged or discarded.
+    func startOpenSession() {
+        guard !isOpenSession else { return }
+        setTimerAside()
+        openSessionToast = nil
+        openElapsed = 0
+        openSessionStart = Date()
+        isOpenSession = true
+        resumeOpenSession()
+    }
+
+    func toggleOpenSession() {
+        openSessionRunning ? pauseOpenSession() : resumeOpenSession()
+    }
+
+    /// Adds the open session to today's focus time, then restores the timer.
+    func logOpenSession() {
+        let seconds = openElapsed
+        endOpenSession()
+        addFocusTime(seconds)
+        openSessionToast = OpenSessionToast(message: "Added \(Self.describe(seconds: seconds)) to today", seconds: seconds, logged: true)
+    }
+
+    func discardOpenSession() {
+        let seconds = openElapsed
+        endOpenSession()
+        openSessionToast = OpenSessionToast(message: "Discarded \(Self.describe(seconds: seconds))", seconds: seconds, logged: false)
+    }
+
+    /// Reopens the session the toast refers to, paused, taking back any time it logged.
+    func undoOpenSessionEnd() {
+        guard let toast = openSessionToast, !isOpenSession else { return }
+        openSessionToast = nil
+        if toast.logged { addFocusTime(-toast.seconds) }
+        setTimerAside()
+        openElapsed = toast.seconds
+        isOpenSession = true
+    }
+
+    private func setTimerAside() {
+        setAside = (timerState, sessionState, timeRemaining)
+        if timerState == .running { pause() }
+    }
+
+    private func resumeOpenSession() {
+        openSessionRunning = true
+        openTimer = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in self?.openElapsed += 1 }
+    }
+
+    private func pauseOpenSession() {
+        openSessionRunning = false
+        openTimer?.cancel()
+    }
+
+    private func endOpenSession() {
+        pauseOpenSession()
+        isOpenSession = false
+        guard let saved = setAside else { return }
+        setAside = nil
+        sessionState = saved.session
+        timeRemaining = saved.remaining
+        if saved.state == .running {
+            start()
+        } else {
+            timerState = saved.state
+        }
+    }
+
+    private func addFocusTime(_ seconds: Int) {
+        checkAndUpdateDailyReset()
+        focusTimeToday = max(0, focusTimeToday + seconds)
+        weeklyHistory[dateFormatter().string(from: Date())] = focusTimeToday
+        saveWeeklyHistory()
     }
 }
