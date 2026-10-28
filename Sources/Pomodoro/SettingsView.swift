@@ -5,11 +5,19 @@ struct SettingsView: View {
     @ObservedObject var timerManager: TimerManager
     @AppStorage(PaperTheme.accentKey) private var accent: PaperAccent = .clay
     @AppStorage(PaperTheme.fontKey) private var displayFont: PaperFont = .serif
+    @AppStorage(PaperTheme.appearanceKey) private var appearance: PaperAppearance = .system
     @Environment(\.paperTheme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             section("Appearance") {
+                SettingsRow(title: "Theme", detail: "Light, dark, or match macOS") {
+                    PaperSegmented(selection: $appearance, options: PaperAppearance.allCases, segmentPadding: 11) { option in
+                        Text(option.title)
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                }
+                Hairline()
                 SettingsRow(title: "Accent color", detail: "Focus sessions, charts and switches") {
                     AccentSwatches(selection: $accent)
                 }
