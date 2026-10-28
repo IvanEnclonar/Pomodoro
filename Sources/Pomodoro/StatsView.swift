@@ -3,6 +3,7 @@ import SwiftUI
 struct DailyFocusData: Identifiable {
     let id = UUID()
     let date: Date
+    let dateString: String
     let seconds: Int
     let isToday: Bool
 }
@@ -18,6 +19,9 @@ struct HeatmapDay: Identifiable {
 struct StatsView: View {
     @ObservedObject var timerManager: TimerManager
     @Environment(\.paperTheme) private var theme
+    /// The day under the pointer in each chart, as yyyy-MM-dd.
+    @State private var hoveredWeekDay: String?
+    @State private var hoveredHeatDay: String?
 
     private let cellSize: CGFloat = 44
     private var columns: [GridItem] {
@@ -90,28 +94,35 @@ struct StatsView: View {
 
         return VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Last 7 days") {
-                Text("\(Paper.duration(seconds: total)) total")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Paper.textMuted)
+                if let day = days.first(where: { $0.dateString == hoveredWeekDay }) {
+                    hoverReadout(date: day.date, seconds: day.seconds)
+                } else {
+                    Text("\(Paper.duration(seconds: total)) total")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Paper.textMuted)
+                }
             }
 
             VStack(spacing: 8) {
                 HStack(alignment: .bottom, spacing: 12) {
                     ForEach(days) { day in
+                        let isHovered = day.dateString == hoveredWeekDay
+                        // Today's total shows by default; hovering any day shows that day's instead.
+                        let showsLabel = isHovered || (hoveredWeekDay == nil && day.isToday && day.seconds >= 60)
                         VStack(spacing: 6) {
-                            if day.isToday && day.seconds >= 60 {
-                                Text(Paper.duration(seconds: day.seconds))
+                            if showsLabel {
+                                Text(day.seconds > 0 ? Paper.duration(seconds: day.seconds) : "0m")
                                     .font(.system(size: 12, weight: .medium))
                                     .fixedSize()
                             }
                             UnevenRoundedRectangle(topLeadingRadius: 5, topTrailingRadius: 5, style: .continuous)
-                                .fill(day.isToday ? theme.accent.color : theme.barMuted)
+                                .fill(day.isToday || isHovered ? theme.accent.color : theme.barMuted)
                                 .frame(maxWidth: 34)
                                 .frame(height: barHeight(day.seconds, peak: peak))
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                         .contentShape(Rectangle())
-                        .help("\(day.date.formatted(.dateTime.weekday(.abbreviated))) · \(focusLabel(day.seconds))")
+                        .onHover { inside in hover(&hoveredWeekDay, day.dateString, inside) }
                     }
                 }
                 .frame(height: 140)
@@ -141,17 +152,11 @@ struct StatsView: View {
     private var monthSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Last 30 days") {
-                HStack(spacing: 4) {
-                    Text("Less").padding(.trailing, 2)
-                    ForEach(theme.heat.indices, id: \.self) { level in
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(theme.heat[level])
-                            .frame(width: 10, height: 10)
-                    }
-                    Text("More").padding(.leading, 2)
+                if let day = heatmapData.first(where: { $0.dateString == hoveredHeatDay }) {
+                    hoverReadout(date: day.date, seconds: day.seconds)
+                } else {
+                    heatLegend
                 }
-                .font(.system(size: 11))
-                .foregroundStyle(Paper.textMuted)
             }
 
             VStack(spacing: 8) {
@@ -173,16 +178,50 @@ struct StatsView: View {
                             .fill(theme.heat[heatLevel(day.seconds)])
                             .frame(height: cellSize)
                             .overlay {
-                                if day.isToday {
+                                if day.isToday || day.dateString == hoveredHeatDay {
                                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                        .strokeBorder(Paper.text, lineWidth: 1.5)
+                                        .strokeBorder(day.isToday ? Paper.text : Paper.textMuted, lineWidth: 1.5)
                                 }
                             }
-                            .help(tooltipText(for: day))
+                            .onHover { inside in hover(&hoveredHeatDay, day.dateString, inside) }
                     }
                 }
             }
             .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var heatLegend: some View {
+        HStack(spacing: 4) {
+            Text("Less").padding(.trailing, 2)
+            ForEach(theme.heat.indices, id: \.self) { level in
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(theme.heat[level])
+                    .frame(width: 10, height: 10)
+            }
+            Text("More").padding(.leading, 2)
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(Paper.textMuted)
+    }
+
+    /// Shown in a section header while the pointer is over a day.
+    private func hoverReadout(date: Date, seconds: Int) -> some View {
+        HStack(spacing: 6) {
+            Text(date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                .foregroundStyle(Paper.textMuted)
+            Text(focusLabel(seconds))
+                .fontWeight(.medium)
+        }
+        .font(.system(size: 13))
+    }
+
+    /// Moving between two days can report the new day's enter before the old day's exit.
+    private func hover(_ hovered: inout String?, _ day: String, _ inside: Bool) {
+        if inside {
+            hovered = day
+        } else if hovered == day {
+            hovered = nil
         }
     }
 
@@ -204,8 +243,9 @@ struct StatsView: View {
 
         return (0..<7).reversed().compactMap { i -> DailyFocusData? in
             guard let date = calendar.date(byAdding: .day, value: -i, to: today) else { return nil }
-            let seconds = timerManager.weeklyHistory[fmt.string(from: date)] ?? 0
-            return DailyFocusData(date: date, seconds: seconds, isToday: i == 0)
+            let dateStr = fmt.string(from: date)
+            let seconds = timerManager.weeklyHistory[dateStr] ?? 0
+            return DailyFocusData(date: date, dateString: dateStr, seconds: seconds, isToday: i == 0)
         }
     }
 
@@ -241,9 +281,5 @@ struct StatsView: View {
 
     private func focusLabel(_ seconds: Int) -> String {
         seconds > 0 ? Paper.duration(seconds: seconds) : "No focus"
-    }
-
-    private func tooltipText(for day: HeatmapDay) -> String {
-        "\(day.date.formatted(.dateTime.month(.abbreviated).day())): \(focusLabel(day.seconds))"
     }
 }

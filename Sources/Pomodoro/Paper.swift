@@ -114,10 +114,28 @@ enum PaperFont: String, CaseIterable, Identifiable {
     }
 }
 
+/// Light or dark, or follow the system setting.
+enum PaperAppearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+
+    var id: Self { self }
+
+    var title: String { rawValue.capitalized }
+
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light:  return NSAppearance(named: .aqua)
+        case .dark:   return NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
 /// The appearance choices from Settings, passed down the environment.
 struct PaperTheme {
     static let accentKey = "accentColor"
     static let fontKey = "displayFont"
+    static let appearanceKey = "appearance"
 
     var accent: PaperAccent = .clay
     var font: PaperFont = .serif
@@ -158,11 +176,15 @@ extension EnvironmentValues {
 private struct PaperThemeReader: ViewModifier {
     @AppStorage(PaperTheme.accentKey) private var accent: PaperAccent = .clay
     @AppStorage(PaperTheme.fontKey) private var font: PaperFont = .serif
+    @AppStorage(PaperTheme.appearanceKey) private var appearance: PaperAppearance = .system
 
     func body(content: Content) -> some View {
         content
             .environment(\.paperTheme, PaperTheme(accent: accent, font: font))
             .tint(accent.color)
+            // Set app-wide so the window, Settings and the menu bar popover all switch together.
+            .onAppear { NSApp.appearance = appearance.nsAppearance }
+            .onChange(of: appearance) { _, newValue in NSApp.appearance = newValue.nsAppearance }
     }
 }
 
