@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DailyFocusData: Identifiable {
-    let id = UUID()
+    var id: String { dateString }
     let date: Date
     let dateString: String
     let seconds: Int
@@ -9,7 +9,7 @@ struct DailyFocusData: Identifiable {
 }
 
 struct HeatmapDay: Identifiable {
-    let id = UUID()
+    var id: String { dateString }
     let date: Date
     let dateString: String
     let seconds: Int
@@ -22,6 +22,7 @@ struct StatsView: View {
     /// The day under the pointer in each chart, as yyyy-MM-dd.
     @State private var hoveredWeekDay: String?
     @State private var hoveredHeatDay: String?
+    @State private var weekChartWidth: CGFloat = 0
 
     private let cellSize: CGFloat = 44
     private var columns: [GridItem] {
@@ -41,6 +42,9 @@ struct StatsView: View {
         }
         .scrollIndicators(.never)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The toolbar has no background of its own, so stop the content at its edge
+        // rather than letting it scroll up behind the window buttons and tabs.
+        .clipped()
     }
 
     // MARK: - Today
@@ -121,11 +125,21 @@ struct StatsView: View {
                                 .frame(height: barHeight(day.seconds, peak: peak))
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                        .contentShape(Rectangle())
-                        .onHover { inside in hover(&hoveredWeekDay, day.dateString, inside) }
                     }
                 }
                 .frame(height: 140)
+                // One hover region for the whole chart, so the pointer never sits on a
+                // view that is being swapped out while the dashboard scrolls under it.
+                .contentShape(Rectangle())
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { weekChartWidth = $0 }
+                .onContinuousHover { phase in
+                    var day: String?
+                    if case .active(let point) = phase, weekChartWidth > 0 {
+                        let column = Int(point.x / (weekChartWidth + 12) * 7)
+                        day = days.indices.contains(column) ? days[column].dateString : nil
+                    }
+                    if hoveredWeekDay != day { hoveredWeekDay = day }
+                }
                 .overlay(alignment: .bottom) {
                     Rectangle().fill(Paper.border).frame(height: 1)
                 }
@@ -183,8 +197,22 @@ struct StatsView: View {
                                         .strokeBorder(day.isToday ? Paper.text : Paper.textMuted, lineWidth: 1.5)
                                 }
                             }
-                            .onHover { inside in hover(&hoveredHeatDay, day.dateString, inside) }
                     }
+                }
+                // Exactly seven columns wide, so hover positions line up with the cells.
+                .frame(width: cellSize * 7 + 6 * 6)
+                .onContinuousHover { phase in
+                    var day: String?
+                    if case .active(let point) = phase {
+                        // Each cell and its gap is cellSize + 6 wide and tall.
+                        let column = Int(point.x / (cellSize + 6))
+                        let row = Int(point.y / (cellSize + 6))
+                        let index = row * 7 + column - leadingEmptyCells
+                        if (0..<7).contains(column), heatmapData.indices.contains(index) {
+                            day = heatmapData[index].dateString
+                        }
+                    }
+                    if hoveredHeatDay != day { hoveredHeatDay = day }
                 }
             }
             .frame(maxWidth: .infinity)
@@ -214,15 +242,6 @@ struct StatsView: View {
                 .fontWeight(.medium)
         }
         .font(.system(size: 13))
-    }
-
-    /// Moving between two days can report the new day's enter before the old day's exit.
-    private func hover(_ hovered: inout String?, _ day: String, _ inside: Bool) {
-        if inside {
-            hovered = day
-        } else if hovered == day {
-            hovered = nil
-        }
     }
 
     private func sectionHeader<Trailing: View>(_ title: String, @ViewBuilder trailing: () -> Trailing) -> some View {
