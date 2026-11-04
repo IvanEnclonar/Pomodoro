@@ -8,7 +8,7 @@ struct MenuBarLabel: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(nsImage: Self.cycle(
-                completed: timerManager.sessionState == .longBreak ? 4 : timerManager.sessionCount % 4,
+                completed: timerManager.sessionsDoneInCycle,
                 inFocus: timerManager.sessionState == .focus,
                 progress: timerManager.progress
             ))
@@ -17,30 +17,20 @@ struct MenuBarLabel: View {
         }
     }
 
-    /// The app's cycle logo, live: one arc per session in the round. Finished sessions are solid,
-    /// the focus session in progress fills as it runs, and the rest stay faint.
-    /// The menu bar only draws images and text, so it is rendered to a template image.
+    /// The app's cycle logo, live (see CycleArcs). The menu bar only draws images and text,
+    /// so it is rendered to a template image, in 24 steps per session to keep redraws rare.
     @MainActor
     private static func cycle(completed: Int, inFocus: Bool, progress: Double) -> NSImage {
         let fraction = (min(max(progress, 0), 1) * 24).rounded() / 24
-        let gap = 15.0 / 360
-        let stroke = StrokeStyle(lineWidth: 2, lineCap: .round)
-        let glyph = ZStack {
-            ForEach(0..<4, id: \.self) { i in
-                let start = Double(i) * 0.25 + gap
-                let end = Double(i + 1) * 0.25 - gap
-                let filled = i < completed ? end : (inFocus && i == completed ? start + (end - start) * fraction : start)
-                Circle()
-                    .trim(from: start, to: end)
-                    .stroke(Color.black.opacity(0.35), style: stroke)
-                if filled > start {
-                    Circle()
-                        .trim(from: start, to: filled)
-                        .stroke(Color.black, style: stroke)
-                }
-            }
-        }
-        .rotationEffect(.degrees(-90))
+        let glyph = CycleArcs(
+            completed: completed,
+            inFocus: inFocus,
+            progress: fraction,
+            lineWidth: 2,
+            gap: 15.0 / 360,
+            track: .black.opacity(0.35),
+            fill: .black
+        )
         .frame(width: 12, height: 12)
         .padding(1.5)
 

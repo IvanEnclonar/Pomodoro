@@ -84,29 +84,24 @@ struct TimerView: View {
     @ObservedObject var timerManager: TimerManager
     @Environment(\.paperTheme) private var theme
 
-    private var accent: Color { theme.accent(for: timerManager.sessionState) }
+    private let ringSize: CGFloat = 300
+    private let ringLine: CGFloat = 4
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 16)
-
-            Group {
-                if timerManager.isOpenSession {
-                    openSession
-                } else {
-                    pomodoro
-                }
+        Group {
+            if timerManager.isOpenSession {
+                openSession
+            } else {
+                pomodoro
             }
-            .padding(.horizontal, 40)
-
-            Spacer(minLength: 16)
-
-            todayFooter
         }
+        .padding(.horizontal, 40)
+        .padding(.bottom, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottom) {
             if let toast = timerManager.openSessionToast {
                 OpenSessionToastView(toast: toast, undo: timerManager.undoOpenSessionEnd)
-                    .padding(.bottom, 62)
+                    .padding(.bottom, 20)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .task(id: toast.id) {
                         try? await Task.sleep(for: .seconds(6))
@@ -121,146 +116,126 @@ struct TimerView: View {
         .animation(.snappy, value: timerManager.openSessionToast)
     }
 
+    private func clock(_ text: String) -> some View {
+        Text(text)
+            .font(theme.display(84, weight: .light))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .frame(maxWidth: ringSize - 70)
+    }
+
     // MARK: Pomodoro
 
     private var pomodoro: some View {
         VStack(spacing: 32) {
-            SessionLabel(timerManager: timerManager)
+            ZStack {
+                CycleArcs(
+                    completed: timerManager.sessionsDoneInCycle,
+                    inFocus: timerManager.sessionState == .focus,
+                    progress: timerManager.progress,
+                    lineWidth: ringLine,
+                    gap: 5.0 / 360,
+                    track: Paper.track,
+                    fill: theme.accent.color
+                )
+                .padding(ringLine / 2)
+                .animation(.easeOut(duration: 0.3), value: timerManager.progress)
+                // The arcs already show where you are in the round, so the session is
+                // only spelled out for VoiceOver.
+                .accessibilityElement()
+                .accessibilityLabel("\(timerManager.sessionTitle), \(timerManager.sessionDetail)")
 
-            VStack(spacing: 22) {
-                Text(timerManager.timeString)
-                    .font(theme.display(124, weight: .light))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                clock(timerManager.timeString)
                     .contentTransition(.numericText(countsDown: true))
                     .animation(.snappy, value: timerManager.timeRemaining)
 
-                ProgressLine(progress: timerManager.progress, color: accent)
-                    .frame(width: 280)
-            }
-
-            VStack(spacing: 12) {
-                controls
-
-                Button(action: timerManager.startOpenSession) {
-                    HStack(spacing: 7) {
-                        Image(systemName: "stopwatch")
-                            .font(.system(size: 13, weight: .medium))
-                        Text("Track without a timer")
+                // A break looks the same as focus on the ring, so it keeps its name. It is
+                // offset from the centre rather than stacked, so the clock never moves.
+                if timerManager.sessionState != .focus {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(theme.accent(for: timerManager.sessionState))
+                            .frame(width: 8, height: 8)
+                        Text(timerManager.sessionTitle)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Paper.textSecondary)
                     }
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Paper.textSecondary)
-                    .padding(.horizontal, 12)
-                    .frame(height: 32)
-                    .contentShape(Rectangle())
+                    .font(.system(size: 13))
+                    .offset(y: -60)
+                    .transition(.opacity)
                 }
-                .buttonStyle(.plain)
-                .pointerStyle(.link)
-                .help("Count up with no target, then log the time when you're done")
             }
+            .frame(width: ringSize, height: ringSize)
 
-            Text("Up next: \(timerManager.upNext)")
-                .font(.system(size: 13))
-                .foregroundStyle(Paper.textMuted)
+            HStack(spacing: 16) {
+                iconButton("stopwatch", "Track without a timer", action: timerManager.startOpenSession)
+
+                Button(action: timerManager.toggle) {
+                    Image(systemName: timerManager.primaryActionIcon)
+                        // The play triangle looks off-centre in a circle without a nudge.
+                        .offset(x: timerManager.timerState == .running ? 0 : 1.5)
+                }
+                .buttonStyle(.icon(.primary, size: 56, iconSize: 20))
+                .keyboardShortcut(.space, modifiers: [])
+                .help(timerManager.primaryActionTitle)
+                .accessibilityLabel(timerManager.primaryActionTitle)
+
+                iconButton("forward.end.fill", "Skip", action: timerManager.skip)
+            }
         }
     }
 
-    private var controls: some View {
-        HStack(spacing: 10) {
-            Button(action: timerManager.toggle) {
-                HStack(spacing: 8) {
-                    Image(systemName: timerManager.primaryActionIcon)
-                        .font(.system(size: 12, weight: .semibold))
-                    Text(timerManager.primaryActionTitle)
-                }
-                .frame(minWidth: 92)
-            }
-            .buttonStyle(PaperButtonStyle(prominence: .primary))
-            .keyboardShortcut(.space, modifiers: [])
-
-            Button(action: timerManager.skip) {
-                HStack(spacing: 8) {
-                    Image(systemName: "forward.end.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text("Skip")
-                }
-            }
-            .buttonStyle(PaperButtonStyle(prominence: .secondary))
+    private func iconButton(_ systemName: String, _ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
         }
+        .buttonStyle(.icon(.secondary, size: 44, iconSize: 15))
+        .help(label)
+        .accessibilityLabel(label)
     }
 
     // MARK: Open Session
 
     private var openSession: some View {
-        VStack(spacing: 32) {
-            OpenSessionLabel()
+        let logLabel = "Log \(TimerManager.describe(seconds: timerManager.openElapsed))"
+        let toggleLabel = timerManager.openSessionRunning ? "Pause" : "Resume"
 
-            VStack(spacing: 18) {
-                Text(timerManager.openClockString)
-                    .font(theme.display(124, weight: .light))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+        return VStack(spacing: 32) {
+            ZStack {
+                // One unbroken ring: an open session has no place in the cycle.
+                Circle()
+                    .stroke(Paper.track, lineWidth: ringLine)
+                    .padding(ringLine / 2)
+                    .accessibilityElement()
+                    .accessibilityLabel("Open session, \(timerManager.openSessionStatus)")
+
+                clock(timerManager.openClockString)
                     .contentTransition(.numericText())
                     .animation(.snappy, value: timerManager.openElapsed)
-
-                Text(timerManager.openSessionStatus)
-                    .font(.system(size: 13))
-                    .foregroundStyle(Paper.textMuted)
             }
+            .frame(width: ringSize, height: ringSize)
 
-            VStack(spacing: 10) {
-                HStack(spacing: 10) {
-                    Button(action: timerManager.logOpenSession) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text("Log \(TimerManager.describe(seconds: timerManager.openElapsed))")
-                        }
-                        .frame(minWidth: 112)
-                    }
-                    .buttonStyle(PaperButtonStyle(prominence: .primary))
-                    .keyboardShortcut(.return, modifiers: [])
-                    .disabled(timerManager.openElapsed == 0)
-
-                    Button(action: timerManager.toggleOpenSession) {
-                        HStack(spacing: 8) {
-                            Image(systemName: timerManager.openSessionRunning ? "pause.fill" : "play.fill")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(timerManager.openSessionRunning ? "Pause" : "Resume")
-                        }
-                    }
-                    .buttonStyle(PaperButtonStyle(prominence: .secondary))
-                    .keyboardShortcut(.space, modifiers: [])
+            HStack(spacing: 16) {
+                Button(action: timerManager.toggleOpenSession) {
+                    Image(systemName: timerManager.openSessionRunning ? "pause.fill" : "play.fill")
                 }
+                .buttonStyle(.icon(.secondary, size: 44, iconSize: 15))
+                .keyboardShortcut(.space, modifiers: [])
+                .help(toggleLabel)
+                .accessibilityLabel(toggleLabel)
 
-                Button("Discard", action: timerManager.discardOpenSession)
-                    .buttonStyle(.plain)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Paper.textMuted)
-                    .frame(height: 32)
-                    .pointerStyle(.link)
+                Button(action: timerManager.logOpenSession) {
+                    Image(systemName: "checkmark")
+                }
+                .buttonStyle(.icon(.primary, size: 56, iconSize: 20))
+                .keyboardShortcut(.return, modifiers: [])
+                .disabled(timerManager.openElapsed == 0)
+                .help(logLabel)
+                .accessibilityLabel(logLabel)
+
+                iconButton("xmark", "Discard", action: timerManager.discardOpenSession)
             }
-
-            Text("Your timer picks up where it was when you're done")
-                .font(.system(size: 13))
-                .foregroundStyle(Paper.textMuted)
-        }
-    }
-
-    private var todayFooter: some View {
-        VStack(spacing: 0) {
-            Hairline()
-            HStack {
-                Text("Today")
-                Spacer()
-                Text("\(Text(Paper.duration(seconds: timerManager.focusTimeToday)).foregroundStyle(Paper.text).fontWeight(.medium)) focused · \(timerManager.todaySummary)")
-            }
-            .font(.system(size: 13))
-            .foregroundStyle(Paper.textMuted)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
         }
     }
 }
