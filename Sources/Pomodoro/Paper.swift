@@ -215,15 +215,9 @@ extension TimerManager {
         }
     }
 
-    var upNext: String {
-        switch sessionState {
-        case .focus:
-            return (sessionCount + 1) % 4 == 0
-                ? "Long break · \(longBreakDurationMinutes) min"
-                : "Short break · \(shortBreakDurationMinutes) min"
-        case .shortBreak, .longBreak:
-            return "Focus · \(focusDurationMinutes) min"
-        }
+    /// Focus sessions finished in this round of four, for the cycle ring.
+    var sessionsDoneInCycle: Int {
+        sessionState == .longBreak ? 4 : sessionCount % 4
     }
 
     var primaryActionTitle: String {
@@ -365,6 +359,41 @@ struct ProgressLine: View {
     }
 }
 
+/// The cycle mark, as in the app icon: one arc per session in the round. Finished sessions
+/// are solid, the focus session in progress fills as it runs, and the rest show only the track.
+/// The stroke is centred on the frame's edge, so callers pad by half the line width.
+struct CycleArcs: View {
+    var completed: Int
+    var inFocus: Bool
+    var progress: Double
+    var lineWidth: CGFloat
+    /// Space left on each side of an arc, as a fraction of the circle.
+    var gap: Double
+    var track: Color
+    var fill: Color
+
+    var body: some View {
+        let stroke = StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+        let fraction = min(max(progress, 0), 1)
+        ZStack {
+            ForEach(0..<4, id: \.self) { i in
+                let start = Double(i) * 0.25 + gap
+                let end = Double(i + 1) * 0.25 - gap
+                let filled = i < completed ? end : (inFocus && i == completed ? start + (end - start) * fraction : start)
+                Circle()
+                    .trim(from: start, to: end)
+                    .stroke(track, style: stroke)
+                if filled > start {
+                    Circle()
+                        .trim(from: start, to: filled)
+                        .stroke(fill, style: stroke)
+                }
+            }
+        }
+        .rotationEffect(.degrees(-90))
+    }
+}
+
 /// Pill-shaped segmented control, as used for the Timer / Dashboard switcher.
 struct PaperSegmented<Option: Hashable, Label: View>: View {
     @Binding var selection: Option
@@ -425,9 +454,18 @@ struct PaperButtonStyle: ButtonStyle {
     var height: CGFloat = 44
     var fontSize: CGFloat = 15
     var cornerRadius: CGFloat = 10
+    /// A round button holding just an icon.
+    var iconOnly = false
 
     func makeBody(configuration: Configuration) -> some View {
         PaperButtonBody(configuration: configuration, style: self)
+    }
+}
+
+extension ButtonStyle where Self == PaperButtonStyle {
+    /// A round Paper button holding just an icon.
+    static func icon(_ prominence: PaperButtonStyle.Prominence, size: CGFloat, iconSize: CGFloat) -> PaperButtonStyle {
+        PaperButtonStyle(prominence: prominence, height: size, fontSize: iconSize, cornerRadius: size / 2, iconOnly: true)
     }
 }
 
@@ -435,18 +473,19 @@ private struct PaperButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let style: PaperButtonStyle
     @State private var hovering = false
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
         let isPrimary = style.prominence == .primary
         configuration.label
             .font(.system(size: style.fontSize, weight: .medium))
-            .padding(.horizontal, 18)
-            .frame(height: style.height)
+            .padding(.horizontal, style.iconOnly ? 0 : 18)
+            .frame(width: style.iconOnly ? style.height : nil, height: style.height)
             .foregroundStyle(isPrimary ? Paper.onPrimary : Paper.textSecondary)
             .background(shape.fill(isPrimary ? Paper.primary : Paper.surface))
             .overlay(shape.strokeBorder(isPrimary ? Color.clear : Paper.border, lineWidth: 1))
-            .opacity(configuration.isPressed ? 0.7 : (hovering ? 0.88 : 1))
+            .opacity(!isEnabled ? 0.4 : configuration.isPressed ? 0.7 : (hovering ? 0.88 : 1))
             .contentShape(shape)
             .onHover { hovering = $0 }
             .pointerStyle(.link)
